@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getVertical } from "@/lib/verticals";
 
 export type BgPattern = "none" | "lines" | "dots" | "grid" | "noise" | "diagonal";
 
@@ -31,6 +32,9 @@ export interface PhysicsConfig {
 }
 
 export interface BadgeState {
+  // Selected Grupo Ragga vertical (drives lanyard color + logo)
+  vertical: string;
+
   // Basic info
   fullName: string;
   role: string;
@@ -59,6 +63,7 @@ export interface BadgeState {
   rev: number;
 
   set: <K extends keyof BadgeState>(key: K, value: BadgeState[K]) => void;
+  setVertical: (key: string) => void;
   setPhoto: (p: Partial<PhotoConfig>) => void;
   setLogo: (l: Partial<LogoConfig>) => void;
   setPhysics: (p: Partial<PhysicsConfig>) => void;
@@ -97,6 +102,7 @@ const initialPhysics: PhysicsConfig = {
 };
 
 const initialState = {
+  vertical: "mkt-vendas",
   fullName: "Ana Ragga",
   role: "Diretora Criativa",
   department: "Grupo Ragga",
@@ -108,7 +114,7 @@ const initialState = {
   badgeColor: RAGGA_ORANGE,
   textColor: "#ffffff",
   borderColor: "#ffffff",
-  lanyardColor: "#1c1c1c",
+  lanyardColor: "#E86820",
   bgPattern: "dots" as BgPattern,
   patternDensity: 24,
   patternOpacity: 0.12,
@@ -121,6 +127,14 @@ export const useBadgeStore = create<BadgeState>((set) => ({
 
   set: (key, value) =>
     set((s) => ({ [key]: value, rev: s.rev + 1 }) as Partial<BadgeState>),
+
+  // Selecting a vertical adopts its brand key-color for the lanyard strap.
+  setVertical: (key) =>
+    set((s) => ({
+      vertical: key,
+      lanyardColor: getVertical(key).color,
+      rev: s.rev + 1,
+    })),
 
   setPhoto: (p) =>
     set((s) => ({ photo: { ...s.photo, ...p }, rev: s.rev + 1 })),

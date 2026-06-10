@@ -1,6 +1,7 @@
 "use client";
 
 import { useBadgeStore, type BgPattern } from "@/store/useBadgeStore";
+import { VERTICALS } from "@/lib/verticals";
 import Section from "./ui/Section";
 import {
   TextField,
@@ -52,8 +53,52 @@ export default function Sidebar() {
       </div>
 
       <div className="scroll-thin flex-1 overflow-y-auto">
+        {/* 0. Vertical selector */}
+        <Section title="Vertical Ragga" icon="🌿" defaultOpen>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[var(--muted)]">
+              Selecione sua vertical
+            </span>
+            <div className="relative">
+              <select
+                value={s.vertical}
+                onChange={(e) => s.setVertical(e.target.value)}
+                className="w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 pr-9 text-sm text-[var(--text)] outline-none transition focus:border-[var(--accent)]"
+              >
+                {VERTICALS.map((v) => (
+                  <option key={v.key} value={v.key}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
+                ⌄
+              </span>
+            </div>
+          </label>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {VERTICALS.map((v) => (
+              <button
+                key={v.key}
+                onClick={() => s.setVertical(v.key)}
+                title={v.label}
+                className={`h-7 w-7 rounded-full border-2 transition hover:scale-110 ${
+                  s.vertical === v.key
+                    ? "border-white"
+                    : "border-transparent opacity-70"
+                }`}
+                style={{ background: v.color }}
+                aria-label={v.label}
+              />
+            ))}
+          </div>
+          <p className="text-xs leading-relaxed text-[var(--muted)]">
+            A cor e o logo do cordão seguem a vertical escolhida.
+          </p>
+        </Section>
+
         {/* 1. Basic information */}
-        <Section title="Informações Básicas" icon="📝" defaultOpen>
+        <Section title="Informações Básicas" icon="📝">
           <TextField
             label="Nome Completo"
             value={s.fullName}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useFrame, useThree, extend } from "@react-three/fiber";
 import {
@@ -14,6 +14,7 @@ import {
 import { MeshLineGeometry, MeshLineMaterial } from "meshline";
 import Badge, { CARD_H } from "./Badge";
 import { useBadgeStore } from "@/store/useBadgeStore";
+import { getVertical, drawLanyardTile } from "@/lib/verticals";
 
 extend({ MeshLineGeometry, MeshLineMaterial });
 
@@ -22,6 +23,31 @@ const ANCHOR_Y = 2.6;
 export default function Lanyard() {
   const physics = useBadgeStore((s) => s.physics);
   const lanyardColor = useBadgeStore((s) => s.lanyardColor);
+  const vertical = useBadgeStore((s) => s.vertical);
+
+  // Strap texture: the selected vertical's logo tiled along the lanyard.
+  const strip = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext("2d")!;
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 8;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return { ctx, tex };
+  }, []);
+
+  useEffect(() => {
+    drawLanyardTile(strip.ctx, 256, lanyardColor, "#ffffff", getVertical(vertical).sym);
+    strip.tex.needsUpdate = true;
+  }, [vertical, lanyardColor, strip]);
+
+  useEffect(() => () => strip.tex.dispose(), [strip]);
+
+  // How many logo tiles repeat along the strap (keeps them roughly square).
+  const repeatX = Math.max(4, Math.round(9 * physics.ropeLength));
 
   const fixed = useRef<RapierRigidBody>(null!);
   const j1 = useRef<RapierRigidBody>(null!);
@@ -224,11 +250,13 @@ export default function Lanyard() {
       <mesh ref={band}>
         <meshLineGeometry />
         <meshLineMaterial
-          color={lanyardColor}
+          color="white"
+          map={strip.tex}
+          useMap={1}
+          repeat={[repeatX, 1]}
           depthTest={false}
           resolution={[size.width, size.height]}
-          lineWidth={0.16}
-          transparent
+          lineWidth={0.3}
         />
       </mesh>
     </>
