@@ -3,9 +3,10 @@
 import { useBadgeStore } from "@/store/useBadgeStore";
 import { VERTICALS } from "@/lib/verticals";
 import Section from "./ui/Section";
-import { TextField, Slider, Row } from "./ui/Field";
+import { TextField, Slider } from "./ui/Field";
 import ImageDrop from "./ui/ImageDrop";
 import CameraCapture from "./ui/CameraCapture";
+import XYPad from "./ui/XYPad";
 
 export default function Sidebar() {
   const s = useBadgeStore();
@@ -91,28 +92,20 @@ export default function Sidebar() {
             step={0.02}
             onChange={(v) => s.setPhoto({ scale: v })}
           />
-          <Row>
-            <Slider
-              label="Posição X"
-              value={s.photo.posX}
-              min={-200}
-              max={200}
-              onChange={(v) => s.setPhoto({ posX: v })}
-            />
-            <Slider
-              label="Posição Y"
-              value={s.photo.posY}
-              min={-200}
-              max={200}
-              onChange={(v) => s.setPhoto({ posY: v })}
-            />
-          </Row>
+          <XYPad
+            label="Posição"
+            x={s.photo.posX}
+            y={s.photo.posY}
+            min={-200}
+            max={200}
+            onChange={(px, py) => s.setPhoto({ posX: px, posY: py })}
+          />
         </Section>
 
-        {/* Reflection / finish — tune and report the best values */}
-        <Section title="Reflexo & Acabamento">
+        {/* Reflection — diagonal light streaks only */}
+        <Section title="Reflexo (linhas)">
           <Slider
-            label="Opacidade (intensidade)"
+            label="Opacidade"
             value={s.material.intensity}
             min={0}
             max={2}
@@ -127,32 +120,8 @@ export default function Sidebar() {
             step={0.01}
             onChange={(v) => s.setMaterial({ blur: v })}
           />
-          <Slider
-            label="Verniz (clearcoat)"
-            value={s.material.clearcoat}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => s.setMaterial({ clearcoat: v })}
-          />
-          <Slider
-            label="Aspereza (roughness)"
-            value={s.material.roughness}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => s.setMaterial({ roughness: v })}
-          />
-          <Slider
-            label="Reflexividade"
-            value={s.material.reflectivity}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => s.setMaterial({ reflectivity: v })}
-          />
           <p className="text-xs leading-relaxed text-[var(--muted)]">
-            Ajuste e me passe os valores que preferir.
+            Listras diagonais que varrem o crachá. Ajuste e me passe os valores.
           </p>
         </Section>
       </div>

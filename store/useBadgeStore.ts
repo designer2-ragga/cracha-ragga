@@ -144,7 +144,7 @@ const initialPhysics: PhysicsConfig = {
 };
 
 const initialMaterial: MaterialConfig = {
-  intensity: 0.45,
+  intensity: 0.72, // streak opacity (60% brighter than before)
   blur: 0.28,
   clearcoat: 0.5,
   roughness: 0.5,

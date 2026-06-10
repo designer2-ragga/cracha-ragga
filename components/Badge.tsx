@@ -172,16 +172,7 @@ export default function Badge() {
           adds a subtle, realistic glossy sheen that glints as the badge sways. */}
       <mesh position={[0, 0, CARD_T / 2 + 0.003]}>
         <planeGeometry args={[CARD_W - 0.02, CARD_H - 0.02]} />
-        <meshPhysicalMaterial
-          map={texture}
-          transparent
-          metalness={0}
-          roughness={mat.roughness}
-          clearcoat={mat.clearcoat}
-          clearcoatRoughness={mat.blur}
-          envMapIntensity={mat.intensity}
-          reflectivity={mat.reflectivity}
-        />
+        <meshBasicMaterial map={texture} transparent toneMapped={false} />
       </mesh>
 
       {/* diagonal light-streak reflection sweeping across the face */}
