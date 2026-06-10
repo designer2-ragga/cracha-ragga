@@ -102,28 +102,6 @@ export default function Sidebar() {
           />
         </Section>
 
-        {/* Reflection — diagonal light streaks only */}
-        <Section title="Reflexo (linhas)">
-          <Slider
-            label="Opacidade"
-            value={s.material.intensity}
-            min={0}
-            max={2}
-            step={0.01}
-            onChange={(v) => s.setMaterial({ intensity: v })}
-          />
-          <Slider
-            label="Desfoque (blur)"
-            value={s.material.blur}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => s.setMaterial({ blur: v })}
-          />
-          <p className="text-xs leading-relaxed text-[var(--muted)]">
-            Listras diagonais que varrem o crachá. Ajuste e me passe os valores.
-          </p>
-        </Section>
       </div>
 
       <div className="border-t border-[var(--border)] px-5 py-3 text-center text-[10px] text-[var(--muted)]">

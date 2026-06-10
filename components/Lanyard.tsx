@@ -130,16 +130,6 @@ export default function Lanyard() {
   useFrame((state, delta) => {
     const dt = Math.min(delta, 1 / 30);
 
-    // Idle "life": drift the anchor point in a slow looping figure so the
-    // badge always sways gently — like a soft breeze / light walking motion.
-    if (fixed.current) {
-      const t = state.clock.elapsedTime;
-      const ax = Math.sin(t * 0.55) * 0.09 + Math.sin(t * 1.27 + 1.0) * 0.035;
-      const ay = ANCHOR_Y + Math.sin(t * 0.9 + 0.5) * 0.025;
-      const az = Math.sin(t * 0.7 + 2.0) * 0.05;
-      fixed.current.setNextKinematicTranslation({ x: ax, y: ay, z: az });
-    }
-
     if (dragged && card.current) {
       vec.set(state.pointer.x, state.pointer.y, 0.5).unproject(camera);
       dir.copy(vec).sub(camera.position).normalize();
@@ -177,16 +167,23 @@ export default function Lanyard() {
         band.current.geometry.setPoints(curve.getPoints(32));
       }
 
-      // Gently rotate the card back toward the camera (self-righting on
-      // pitch + yaw). The quaternion x/y/z components approximate the small
-      // rotation away from facing the camera; z (the pendulum swing) is left
-      // free so the badge keeps swinging naturally.
+      // Idle motion: the only movement is the card turning a little around its
+      // own vertical axis (yaw). Pitch (x) and swing/roll (z) are damped out so
+      // it stays upright and facing forward; yaw is driven by a slow sine.
       ang.copy(card.current.angvel() as THREE.Vector3);
       const q = card.current.rotation();
       rot.set(q.x, q.y, q.z);
-      const k = 1.6 * physics.responsiveness;
+      const yaw = Math.atan2(
+        2 * (q.w * q.y + q.x * q.z),
+        1 - 2 * (q.y * q.y + q.x * q.x)
+      );
+      const targetYaw = 0.28 * Math.sin(state.clock.elapsedTime * 0.7);
       card.current.setAngvel(
-        { x: ang.x - rot.x * k, y: ang.y - rot.y * k, z: ang.z },
+        {
+          x: ang.x * 0.6 - rot.x * 6,
+          y: (targetYaw - yaw) * 3.2,
+          z: ang.z * 0.6 - rot.z * 6,
+        },
         false
       );
     }
@@ -195,7 +192,7 @@ export default function Lanyard() {
   return (
     <>
       <group position={[0, ANCHOR_Y, 0]}>
-        <RigidBody ref={fixed} type="kinematicPosition" colliders={false} />
+        <RigidBody ref={fixed} type="fixed" colliders={false} />
         <RigidBody
           ref={j1}
           type="dynamic"
@@ -235,7 +232,7 @@ export default function Lanyard() {
           linearDamping={physics.damping}
           angularDamping={physics.damping}
         >
-          <CuboidCollider args={[0.8, 1.125, 0.05]} />
+          <CuboidCollider args={[0.8, 1.125, 0.02]} />
           <group
             onPointerOver={() => setHovered(true)}
             onPointerOut={() => setHovered(false)}

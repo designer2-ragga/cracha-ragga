@@ -9,7 +9,7 @@ import { drawBadge, TEX_W, TEX_H } from "@/lib/badgeTexture";
 
 export const CARD_W = 1.6;
 export const CARD_H = 2.25;
-export const CARD_T = 0.05;
+export const CARD_T = 0.0125; // 75% thinner
 
 /** Draws periodic vertical soft bands (rotated into diagonals by the texture)
  *  for the glossy "light streak" reflection. `blur` softens the band edges. */
@@ -88,10 +88,13 @@ function Clasp() {
  * plastic edge. A metallic clip + ring is rendered above where the lanyard
  * attaches.
  */
+// Fixed diagonal-streak reflection look.
+const STREAK_OPACITY = 0.18;
+const STREAK_BLUR = 1.0;
+
 export default function Badge() {
   const rev = useBadgeStore((s) => s.rev);
   const badgeColor = useBadgeStore((s) => s.badgeColor);
-  const mat = useBadgeStore((s) => s.material);
 
   const { canvas, ctx, texture } = useMemo(() => {
     const c = document.createElement("canvas");
@@ -130,9 +133,9 @@ export default function Badge() {
   }, []);
 
   useEffect(() => {
-    drawStreaks(streak.ctx, 256, mat.blur);
+    drawStreaks(streak.ctx, 256, STREAK_BLUR);
     streak.tex.needsUpdate = true;
-  }, [streak, mat.blur]);
+  }, [streak]);
 
   useEffect(() => () => streak.tex.dispose(), [streak]);
 
@@ -181,7 +184,7 @@ export default function Badge() {
         <meshBasicMaterial
           map={streak.tex}
           transparent
-          opacity={mat.intensity}
+          opacity={STREAK_OPACITY}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           toneMapped={false}
