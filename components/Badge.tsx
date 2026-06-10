@@ -115,17 +115,11 @@ export default function Badge() {
         />
       </RoundedBox>
 
-      {/* printed face — flat plane with clean UVs, transparent rounded corners
-          reveal the plastic body beneath */}
+      {/* printed face — flat, unlit so the artwork stays bright and crisp
+          with no harsh reflections; rounded corners reveal the body beneath */}
       <mesh position={[0, 0, CARD_T / 2 + 0.003]}>
         <planeGeometry args={[CARD_W - 0.02, CARD_H - 0.02]} />
-        <meshStandardMaterial
-          map={texture}
-          transparent
-          roughness={0.55}
-          metalness={0}
-          envMapIntensity={0.35}
-        />
+        <meshBasicMaterial map={texture} transparent toneMapped={false} />
       </mesh>
     </group>
   );

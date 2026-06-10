@@ -1,32 +1,23 @@
 "use client";
 
-import { Suspense, useCallback, useRef } from "react";
+import { Suspense, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import { Physics } from "@react-three/rapier";
 import Lanyard from "./Lanyard";
 import { useBadgeStore } from "@/store/useBadgeStore";
+import { downloadBadgePdf } from "@/lib/exportBadge";
 
-function SceneControls({
-  glRef,
-}: {
-  glRef: React.MutableRefObject<HTMLCanvasElement | null>;
-}) {
+function SceneControls() {
   const recenter = useBadgeStore((s) => s.recenter);
   const shuffle = useBadgeStore((s) => s.shuffle);
   const throwFood = useBadgeStore((s) => s.throwFood);
 
+  // Export the badge ARTWORK as a print-ready PDF (not a screenshot of the
+  // 3D scene).
   const download = useCallback(() => {
-    const canvas = glRef.current;
-    if (!canvas) return;
-    requestAnimationFrame(() => {
-      const url = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "cracha-ragga.png";
-      a.click();
-    });
-  }, [glRef]);
+    downloadBadgePdf(useBadgeStore.getState());
+  }, []);
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center gap-3">
@@ -53,7 +44,7 @@ function SceneControls({
         onClick={download}
         className="pointer-events-auto rounded-full bg-[var(--accent)] px-5 py-2.5 text-xs font-semibold tracking-wide text-white shadow-lg shadow-orange-900/30 transition hover:brightness-110"
       >
-        ↓ Baixar PNG
+        ↓ Baixar PDF
       </button>
     </div>
   );
@@ -61,7 +52,6 @@ function SceneControls({
 
 export default function Scene() {
   const physics = useBadgeStore((s) => s.physics);
-  const glRef = useRef<HTMLCanvasElement | null>(null);
 
   // Rebuild the physics world when rope length or stiffness change.
   const resetNonce = useBadgeStore((s) => s.resetNonce);
@@ -74,10 +64,7 @@ export default function Scene() {
         shadows
         dpr={[1, 2]}
         camera={{ position: [0, 0, 13], fov: 22 }}
-        gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }}
-        onCreated={({ gl }) => {
-          glRef.current = gl.domElement;
-        }}
+        gl={{ antialias: true, alpha: true }}
       >
         <color attach="background" args={["#0a0a0a"]} />
         <fog attach="fog" args={["#0a0a0a", 16, 30]} />
@@ -155,7 +142,7 @@ export default function Scene() {
         </Suspense>
       </Canvas>
 
-      <SceneControls glRef={glRef} />
+      <SceneControls />
 
       <div className="pointer-events-none absolute left-6 top-6 z-10 select-none">
         <div className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--muted)]">

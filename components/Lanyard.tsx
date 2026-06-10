@@ -47,8 +47,8 @@ export default function Lanyard() {
 
   useEffect(() => () => strip.tex.dispose(), [strip]);
 
-  // How many logo+brand tiles repeat along the strap.
-  const repeatX = Math.max(2, Math.round(3.5 * physics.ropeLength));
+  // How many logo+brand tiles repeat along the wide strap (kept ~square).
+  const repeatX = Math.max(3, Math.round(5 * physics.ropeLength));
 
   const fixed = useRef<RapierRigidBody>(null!);
   const j1 = useRef<RapierRigidBody>(null!);
@@ -250,7 +250,7 @@ export default function Lanyard() {
       {/* Food thrown by the dice button. */}
       <FoodLayer cardRef={card} />
 
-      {/* The lanyard band rendered as a thick line following the rope. */}
+      {/* The lanyard rendered as a WIDE flat strap with logos tiled along it. */}
       <mesh ref={band}>
         <meshLineGeometry />
         <meshLineMaterial
@@ -260,7 +260,7 @@ export default function Lanyard() {
           repeat={[repeatX, 1]}
           depthTest={false}
           resolution={[size.width, size.height]}
-          lineWidth={0.3}
+          lineWidth={0.6}
         />
       </mesh>
     </>

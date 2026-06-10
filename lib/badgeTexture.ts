@@ -134,8 +134,6 @@ export function drawBadge(
 ) {
   ctx.clearRect(0, 0, TEX_W, TEX_H);
 
-  const pad = 40;
-
   // Card body
   ctx.fillStyle = s.badgeColor;
   roundRect(ctx, 0, 0, TEX_W, TEX_H, 48);
@@ -143,14 +141,6 @@ export function drawBadge(
 
   // background pattern
   drawPattern(ctx, s);
-
-  // Inner border
-  ctx.strokeStyle = s.borderColor;
-  ctx.globalAlpha = 0.85;
-  ctx.lineWidth = 3;
-  roundRect(ctx, pad * 0.55, pad * 0.55, TEX_W - pad * 1.1, TEX_H - pad * 1.1, 34);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
 
   // Lanyard slot
   ctx.fillStyle = "rgba(0,0,0,0.28)";
