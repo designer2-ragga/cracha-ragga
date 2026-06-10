@@ -12,8 +12,9 @@ function SceneControls({
 }: {
   glRef: React.MutableRefObject<HTMLCanvasElement | null>;
 }) {
-  const reset = useBadgeStore((s) => s.reset);
+  const recenter = useBadgeStore((s) => s.recenter);
   const shuffle = useBadgeStore((s) => s.shuffle);
+  const throwFood = useBadgeStore((s) => s.throwFood);
 
   const download = useCallback(() => {
     const canvas = glRef.current;
@@ -30,7 +31,7 @@ function SceneControls({
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center gap-3">
       <button
-        onClick={reset}
+        onClick={recenter}
         className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--panel)]/80 px-5 py-2.5 text-xs font-semibold tracking-wide text-[var(--text)] backdrop-blur transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         ↺ Resetar Posição
@@ -40,6 +41,13 @@ function SceneControls({
         className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--panel)]/80 px-5 py-2.5 text-xs font-semibold tracking-wide text-[var(--text)] backdrop-blur transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         ⤬ Balançar
+      </button>
+      <button
+        onClick={throwFood}
+        title="Jogue um lanche aleatório no crachá!"
+        className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--panel)]/80 px-4 py-2.5 text-base leading-none backdrop-blur transition hover:border-[var(--accent)] hover:scale-110"
+      >
+        🎲
       </button>
       <button
         onClick={download}
@@ -56,7 +64,8 @@ export default function Scene() {
   const glRef = useRef<HTMLCanvasElement | null>(null);
 
   // Rebuild the physics world when rope length or stiffness change.
-  const physicsKey = `${physics.ropeLength.toFixed(2)}-${physics.stiffness.toFixed(2)}`;
+  const resetNonce = useBadgeStore((s) => s.resetNonce);
+  const physicsKey = `${physics.ropeLength.toFixed(2)}-${physics.stiffness.toFixed(2)}-${resetNonce}`;
   const gravityY = -22 * physics.stiffness;
 
   return (

@@ -274,6 +274,61 @@ export function drawBadge(
   ctx.textAlign = "right";
   ctx.fillText(s.footerRight, TEX_W - pad - 8, TEX_H - 52);
   ctx.globalAlpha = 1;
+
+  // ---- Sauce stains (painted on top of everything) ----
+  for (const st of s.stains) drawStain(ctx, st);
+}
+
+function drawStain(
+  ctx: CanvasRenderingContext2D,
+  st: { x: number; y: number; r: number; color: string; seed: number }
+) {
+  // deterministic pseudo-random from seed
+  let n = st.seed;
+  const rnd = () => {
+    n = (n * 9301 + 49297) % 233280;
+    return n / 233280;
+  };
+
+  ctx.save();
+  ctx.translate(st.x, st.y);
+  ctx.fillStyle = st.color;
+
+  // main organic blob
+  ctx.globalAlpha = 0.92;
+  const pts = 11;
+  ctx.beginPath();
+  for (let i = 0; i <= pts; i++) {
+    const a = (i / pts) * Math.PI * 2;
+    const rr = st.r * (0.7 + rnd() * 0.55);
+    const x = Math.cos(a) * rr;
+    const y = Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // satellite droplets
+  const drops = 4 + Math.floor(rnd() * 5);
+  for (let i = 0; i < drops; i++) {
+    const a = rnd() * Math.PI * 2;
+    const dist = st.r * (1.0 + rnd() * 1.3);
+    const dr = st.r * (0.08 + rnd() * 0.22);
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * dist, Math.sin(a) * dist, dr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // glossy highlight
+  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(-st.r * 0.25, -st.r * 0.25, st.r * 0.28, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function roundedSquarePath(

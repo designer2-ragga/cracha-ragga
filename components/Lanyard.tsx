@@ -15,6 +15,7 @@ import { MeshLineGeometry, MeshLineMaterial } from "meshline";
 import Badge, { CARD_H } from "./Badge";
 import { useBadgeStore } from "@/store/useBadgeStore";
 import { getVertical, drawLanyardTile } from "@/lib/verticals";
+import FoodLayer from "./Food";
 
 extend({ MeshLineGeometry, MeshLineMaterial });
 
@@ -46,8 +47,8 @@ export default function Lanyard() {
 
   useEffect(() => () => strip.tex.dispose(), [strip]);
 
-  // How many logo tiles repeat along the strap (keeps them roughly square).
-  const repeatX = Math.max(4, Math.round(9 * physics.ropeLength));
+  // How many logo+brand tiles repeat along the strap.
+  const repeatX = Math.max(2, Math.round(3.5 * physics.ropeLength));
 
   const fixed = useRef<RapierRigidBody>(null!);
   const j1 = useRef<RapierRigidBody>(null!);
@@ -245,6 +246,9 @@ export default function Lanyard() {
           </group>
         </RigidBody>
       </group>
+
+      {/* Food thrown by the dice button. */}
+      <FoodLayer cardRef={card} />
 
       {/* The lanyard band rendered as a thick line following the rope. */}
       <mesh ref={band}>

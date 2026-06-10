@@ -10,6 +10,50 @@ export const CARD_W = 1.6;
 export const CARD_H = 2.25;
 export const CARD_T = 0.05;
 
+const Metal = () => (
+  <meshStandardMaterial
+    color="#cfd0d4"
+    metalness={1}
+    roughness={0.28}
+    envMapIntensity={1.5}
+  />
+);
+
+/** A brushed-steel swivel snap-hook clasp connecting the strap to the card. */
+function Clasp() {
+  return (
+    <group>
+      {/* card eyelet (grommet) */}
+      <mesh position={[0, 0.05, 0]} castShadow>
+        <torusGeometry args={[0.06, 0.02, 14, 32]} />
+        <Metal />
+      </mesh>
+
+      {/* swivel barrel where the strap is sewn in */}
+      <mesh position={[0, 0.34, 0]} castShadow>
+        <cylinderGeometry args={[0.045, 0.045, 0.13, 20]} />
+        <Metal />
+      </mesh>
+      {/* swivel collar */}
+      <mesh position={[0, 0.26, 0]} castShadow>
+        <cylinderGeometry args={[0.03, 0.03, 0.05, 16]} />
+        <Metal />
+      </mesh>
+
+      {/* open J-hook arc that grabs the eyelet */}
+      <mesh position={[0, 0.16, 0]} rotation={[0, 0, Math.PI * 0.15]} castShadow>
+        <torusGeometry args={[0.075, 0.022, 14, 32, Math.PI * 1.55]} />
+        <Metal />
+      </mesh>
+      {/* hook tip */}
+      <mesh position={[0.07, 0.11, 0]} castShadow>
+        <sphereGeometry args={[0.026, 12, 12]} />
+        <Metal />
+      </mesh>
+    </group>
+  );
+}
+
 /**
  * Pure-visual badge.
  *
@@ -47,26 +91,9 @@ export default function Badge() {
 
   return (
     <group>
-      {/* metallic clip + ring above the card */}
-      <group position={[0, CARD_H / 2 + 0.16, 0]}>
-        <mesh castShadow>
-          <torusGeometry args={[0.11, 0.035, 16, 40]} />
-          <meshStandardMaterial
-            color="#d8d8dc"
-            metalness={1}
-            roughness={0.25}
-            envMapIntensity={1.4}
-          />
-        </mesh>
-        <mesh position={[0, -0.12, 0]} castShadow>
-          <boxGeometry args={[0.16, 0.18, 0.06]} />
-          <meshStandardMaterial
-            color="#bfbfc4"
-            metalness={1}
-            roughness={0.3}
-            envMapIntensity={1.4}
-          />
-        </mesh>
+      {/* metallic swivel snap-hook clasp + card eyelet */}
+      <group position={[0, CARD_H / 2, 0]}>
+        <Clasp />
       </group>
 
       {/* plastic body */}

@@ -94,30 +94,50 @@ export function drawLanyardTile(
   size: number,
   bgColor: string,
   symColor: string,
-  sym: VerticalSymbol
+  sym: VerticalSymbol,
+  label = "GRUPO RAGGA"
 ) {
   ctx.clearRect(0, 0, size, size);
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, size, size);
 
-  // subtle woven edge stripes along the strap
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
-  ctx.fillRect(0, 0, size, size * 0.06);
-  ctx.fillRect(0, size * 0.94, size, size * 0.06);
-
-  // symbol, rotated 90° to read upright on a vertical strap
-  const path = new Path2D(sym.d);
-  const pad = size * 0.2;
-  const avail = size - pad * 2;
-  // after a 90° rotation, the symbol's height spans the tile's width
-  const s = Math.min(avail / sym.h, avail / sym.w);
+  // Work in a "landscape" frame rotated 90° so content reads upright along the
+  // vertically-hanging strap: x = along strap length, y = across strap width.
   ctx.save();
   ctx.translate(size / 2, size / 2);
   ctx.rotate(Math.PI / 2);
+  ctx.translate(-size / 2, -size / 2);
+
+  // woven edge stripes along the long edges of the strap
+  ctx.fillStyle = "rgba(255,255,255,0.10)";
+  ctx.fillRect(0, size * 0.04, size, size * 0.04);
+  ctx.fillRect(0, size * 0.92, size, size * 0.04);
+
+  // symbol in the first half of the tile
+  const path = new Path2D(sym.d);
+  const avail = size * 0.46;
+  const s = Math.min(avail / sym.h, avail / sym.w);
+  ctx.save();
+  ctx.translate(size * 0.26, size / 2);
   ctx.scale(s, s);
   ctx.translate(-sym.w / 2, -sym.h / 2);
   ctx.fillStyle = symColor;
-  ctx.globalAlpha = 0.92;
+  ctx.globalAlpha = 0.95;
   ctx.fill(path);
+  ctx.restore();
+
+  // brand text in the second half
+  ctx.globalAlpha = 0.95;
+  ctx.fillStyle = symColor;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  let fs = size * 0.13;
+  do {
+    ctx.font = `800 ${fs}px ui-sans-serif, system-ui, sans-serif`;
+    if (ctx.measureText(label).width <= size * 0.48) break;
+    fs -= 2;
+  } while (fs > 8);
+  ctx.fillText(label, size * 0.72, size / 2);
+
   ctx.restore();
 }
