@@ -1,4 +1,5 @@
 import type { BadgeState } from "@/store/useBadgeStore";
+import { getVertical } from "@/lib/verticals";
 
 export const TEX_W = 768;
 export const TEX_H = 1080;
@@ -156,65 +157,76 @@ export function drawBadge(
   roundRect(ctx, TEX_W / 2 - 90, 34, 180, 26, 13);
   ctx.fill();
 
-  // ---- Logo (top) ----
-  const logoY = 110;
-  if (s.logo.src) {
-    const img = loadImage(s.logo.src, onImageReady);
-    if (img && img.complete && img.naturalWidth) {
-      ctx.save();
-      ctx.globalAlpha = s.logo.opacity;
-      const baseW = 220 * s.logo.scale;
-      const ratio = img.naturalHeight / img.naturalWidth;
-      const w = baseW;
-      const h = baseW * ratio;
-      const cx = TEX_W / 2 + s.logo.posX;
-      const cy = logoY + h / 2 + s.logo.posY;
-      ctx.translate(cx, cy);
-      ctx.rotate((s.logo.rotation * Math.PI) / 180);
-      ctx.drawImage(img, -w / 2, -h / 2, w, h);
-      ctx.restore();
-    }
+  const vertical = getVertical(s.vertical);
+  const keyColor = vertical.color;
+
+  // ---- Vertical logo (above the photo) ----
+  {
+    const sym = vertical.sym;
+    const targetW = 170;
+    const scale = targetW / sym.w;
+    const cx = TEX_W / 2;
+    const cy = 150;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.translate(-sym.w / 2, -sym.h / 2);
+    ctx.fillStyle = s.textColor;
+    ctx.globalAlpha = 0.95;
+    ctx.fill(new Path2D(sym.d));
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
-  // ---- Photo (circular) ----
-  const photoCY = 430;
-  const baseR = 150;
-  const r = baseR * s.photo.scale;
-  const pcx = TEX_W / 2 + s.photo.posX;
-  const pcy = photoCY + s.photo.posY;
-  const corner = (r * s.photo.borderRadius) / 100; // 100 => full circle
+  // ---- Photo: FIXED circle, image is zoomed (scale) + panned (posX/posY) ----
+  const R = 150; // fixed radius — the circle never changes
+  const pcx = TEX_W / 2;
+  const pcy = 430;
 
   ctx.save();
-  // border ring
+  // key-color border ring (themed by the selected vertical)
   ctx.beginPath();
-  roundedSquarePath(ctx, pcx, pcy, r + 9, corner + 9);
-  ctx.fillStyle = s.photo.borderColor;
+  ctx.arc(pcx, pcy, R + 12, 0, Math.PI * 2);
+  ctx.fillStyle = keyColor;
+  ctx.fill();
+  // thin light separator so the ring reads on a same-color card
+  ctx.beginPath();
+  ctx.arc(pcx, pcy, R + 5, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
   ctx.fill();
 
-  // clip region for the photo
+  // clip to the fixed circle
   ctx.beginPath();
-  roundedSquarePath(ctx, pcx, pcy, r, corner);
+  ctx.arc(pcx, pcy, R, 0, Math.PI * 2);
   ctx.clip();
+  // white backing
+  ctx.fillStyle = "#f0f0f0";
+  ctx.fillRect(pcx - R, pcy - R, R * 2, R * 2);
 
   if (s.photo.src) {
     const img = loadImage(s.photo.src, onImageReady);
     if (img && img.complete && img.naturalWidth) {
-      ctx.globalAlpha = s.photo.opacity;
-      ctx.translate(pcx, pcy);
-      ctx.rotate((s.photo.rotation * Math.PI) / 180);
-      // cover fit
-      const size = r * 2;
+      // cover-fit the circle, then apply zoom (scale) and pan (posX/posY)
+      const base = R * 2;
       const ir = img.naturalWidth / img.naturalHeight;
-      let dw = size,
-        dh = size;
-      if (ir > 1) dw = size * ir;
-      else dh = size / ir;
-      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      let dw = base;
+      let dh = base;
+      if (ir > 1) dw = base * ir;
+      else dh = base / ir;
+      dw *= s.photo.scale;
+      dh *= s.photo.scale;
+      ctx.drawImage(
+        img,
+        pcx - dw / 2 + s.photo.posX,
+        pcy - dh / 2 + s.photo.posY,
+        dw,
+        dh
+      );
     } else {
-      placeholderPhoto(ctx, pcx, pcy, r, s);
+      placeholderPhoto(ctx, pcx, pcy, R);
     }
   } else {
-    placeholderPhoto(ctx, pcx, pcy, r, s);
+    placeholderPhoto(ctx, pcx, pcy, R);
   }
   ctx.restore();
 
@@ -222,57 +234,28 @@ export function drawBadge(
   ctx.textAlign = "center";
   ctx.fillStyle = s.textColor;
 
-  let ty = pcy + r + 90;
+  let ty = pcy + R + 100;
 
   const nameSize = fitText(ctx, s.fullName, TEX_W - 120, 64, "800");
   ctx.font = `800 ${nameSize}px ui-sans-serif, system-ui, sans-serif`;
   ctx.fillText(s.fullName, TEX_W / 2, ty);
-  ty += 56;
+  ty += 58;
 
   if (s.role) {
     ctx.globalAlpha = 0.95;
     const rs = fitText(ctx, s.role, TEX_W - 140, 36, "600");
     ctx.font = `600 ${rs}px ui-sans-serif, system-ui, sans-serif`;
     ctx.fillText(s.role.toUpperCase(), TEX_W / 2, ty);
-    ty += 44;
+    ty += 50;
     ctx.globalAlpha = 1;
   }
 
-  if (s.department) {
-    ctx.globalAlpha = 0.7;
-    const ds = fitText(ctx, s.department, TEX_W - 160, 28, "500");
-    ctx.font = `500 ${ds}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.fillText(s.department, TEX_W / 2, ty);
-    ty += 40;
-    ctx.globalAlpha = 1;
-  }
-
-  // divider
-  ctx.strokeStyle = s.textColor;
-  ctx.globalAlpha = 0.3;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(TEX_W / 2 - 80, ty);
-  ctx.lineTo(TEX_W / 2 + 80, ty);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  ty += 44;
-
-  if (s.subtitle) {
-    ctx.globalAlpha = 0.85;
-    const ss = fitText(ctx, s.subtitle, TEX_W - 160, 26, "500");
-    ctx.font = `italic 500 ${ss}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.fillText(s.subtitle, TEX_W / 2, ty);
-    ctx.globalAlpha = 1;
-  }
-
-  // ---- Footer ----
-  ctx.globalAlpha = 0.8;
-  ctx.font = `600 24px ui-monospace, monospace`;
-  ctx.textAlign = "left";
-  ctx.fillText(s.footerLeft, pad + 8, TEX_H - 52);
-  ctx.textAlign = "right";
-  ctx.fillText(s.footerRight, TEX_W - pad - 8, TEX_H - 52);
+  // department comes from the selected vertical
+  ctx.globalAlpha = 0.75;
+  const dep = vertical.label;
+  const ds = fitText(ctx, dep, TEX_W - 160, 30, "600");
+  ctx.font = `600 ${ds}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.fillText(dep, TEX_W / 2, ty);
   ctx.globalAlpha = 1;
 
   // ---- Sauce stains (painted on top of everything) ----
@@ -331,36 +314,16 @@ function drawStain(
   ctx.globalAlpha = 1;
 }
 
-function roundedSquarePath(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  r: number,
-  corner: number
-) {
-  const x = cx - r;
-  const y = cy - r;
-  const size = r * 2;
-  const rr = Math.min(corner, r);
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + size, y, x + size, y + size, rr);
-  ctx.arcTo(x + size, y + size, x, y + size, rr);
-  ctx.arcTo(x, y + size, x, y, rr);
-  ctx.arcTo(x, y, x + size, y, rr);
-  ctx.closePath();
-}
-
 function placeholderPhoto(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
-  r: number,
-  s: BadgeState
+  r: number
 ) {
-  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.fillStyle = "rgba(0,0,0,0.06)";
   ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
   // simple silhouette
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
   ctx.beginPath();
   ctx.arc(cx, cy - r * 0.18, r * 0.38, 0, Math.PI * 2);
   ctx.fill();
