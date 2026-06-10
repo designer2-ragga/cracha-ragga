@@ -129,6 +129,17 @@ export default function Lanyard() {
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 1 / 30);
+
+    // Idle "life": drift the anchor point in a slow looping figure so the
+    // badge always sways gently — like a soft breeze / light walking motion.
+    if (fixed.current) {
+      const t = state.clock.elapsedTime;
+      const ax = Math.sin(t * 0.55) * 0.09 + Math.sin(t * 1.27 + 1.0) * 0.035;
+      const ay = ANCHOR_Y + Math.sin(t * 0.9 + 0.5) * 0.025;
+      const az = Math.sin(t * 0.7 + 2.0) * 0.05;
+      fixed.current.setNextKinematicTranslation({ x: ax, y: ay, z: az });
+    }
+
     if (dragged && card.current) {
       vec.set(state.pointer.x, state.pointer.y, 0.5).unproject(camera);
       dir.copy(vec).sub(camera.position).normalize();
@@ -184,7 +195,7 @@ export default function Lanyard() {
   return (
     <>
       <group position={[0, ANCHOR_Y, 0]}>
-        <RigidBody ref={fixed} type="fixed" colliders={false} />
+        <RigidBody ref={fixed} type="kinematicPosition" colliders={false} />
         <RigidBody
           ref={j1}
           type="dynamic"
