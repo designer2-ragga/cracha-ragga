@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
 import { useBadgeStore } from "@/store/useBadgeStore";
 import { drawBadge, TEX_W, TEX_H } from "@/lib/badgeTexture";
@@ -9,6 +10,30 @@ import { drawBadge, TEX_W, TEX_H } from "@/lib/badgeTexture";
 export const CARD_W = 1.6;
 export const CARD_H = 2.25;
 export const CARD_T = 0.05;
+
+/** Draws periodic vertical soft bands (rotated into diagonals by the texture)
+ *  for the glossy "light streak" reflection. `blur` softens the band edges. */
+function drawStreaks(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  blur: number
+) {
+  ctx.clearRect(0, 0, size, size);
+  const bands = [
+    { center: 0.28, width: 0.085, alpha: 0.95 },
+    { center: 0.44, width: 0.035, alpha: 0.7 },
+  ];
+  for (const b of bands) {
+    const cx = b.center * size;
+    const w = b.width * size * (1 + blur * 2.2);
+    const grad = ctx.createLinearGradient(cx - w, 0, cx + w, 0);
+    grad.addColorStop(0, "rgba(255,255,255,0)");
+    grad.addColorStop(0.5, `rgba(255,255,255,${b.alpha})`);
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - w, -size, w * 2, size * 3);
+  }
+}
 
 const Metal = () => (
   <meshStandardMaterial
@@ -66,6 +91,7 @@ function Clasp() {
 export default function Badge() {
   const rev = useBadgeStore((s) => s.rev);
   const badgeColor = useBadgeStore((s) => s.badgeColor);
+  const mat = useBadgeStore((s) => s.material);
 
   const { canvas, ctx, texture } = useMemo(() => {
     const c = document.createElement("canvas");
@@ -88,6 +114,32 @@ export default function Badge() {
   }, [rev, ctx, texture, canvas]);
 
   useEffect(() => () => texture.dispose(), [texture]);
+
+  // Diagonal "light streak" reflection overlay.
+  const streak = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 256;
+    const context = c.getContext("2d")!;
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.center.set(0.5, 0.5);
+    tex.rotation = -0.5; // turn the vertical bands into diagonals
+    return { ctx: context, tex };
+  }, []);
+
+  useEffect(() => {
+    drawStreaks(streak.ctx, 256, mat.blur);
+    streak.tex.needsUpdate = true;
+  }, [streak, mat.blur]);
+
+  useEffect(() => () => streak.tex.dispose(), [streak]);
+
+  // Slowly sweep the streaks across the badge, in a loop.
+  useFrame((_, delta) => {
+    streak.tex.offset.x = (streak.tex.offset.x + delta * 0.04) % 1;
+  });
 
   return (
     <group>
@@ -123,12 +175,25 @@ export default function Badge() {
         <meshPhysicalMaterial
           map={texture}
           transparent
-          roughness={0.5}
           metalness={0}
-          clearcoat={0.5}
-          clearcoatRoughness={0.28}
-          envMapIntensity={0.25}
-          reflectivity={0.2}
+          roughness={mat.roughness}
+          clearcoat={mat.clearcoat}
+          clearcoatRoughness={mat.blur}
+          envMapIntensity={mat.intensity}
+          reflectivity={mat.reflectivity}
+        />
+      </mesh>
+
+      {/* diagonal light-streak reflection sweeping across the face */}
+      <mesh position={[0, 0, CARD_T / 2 + 0.006]}>
+        <planeGeometry args={[CARD_W - 0.06, CARD_H - 0.06]} />
+        <meshBasicMaterial
+          map={streak.tex}
+          transparent
+          opacity={mat.intensity}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
         />
       </mesh>
     </group>

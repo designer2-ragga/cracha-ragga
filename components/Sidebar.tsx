@@ -108,6 +108,53 @@ export default function Sidebar() {
             />
           </Row>
         </Section>
+
+        {/* Reflection / finish — tune and report the best values */}
+        <Section title="Reflexo & Acabamento">
+          <Slider
+            label="Opacidade (intensidade)"
+            value={s.material.intensity}
+            min={0}
+            max={2}
+            step={0.01}
+            onChange={(v) => s.setMaterial({ intensity: v })}
+          />
+          <Slider
+            label="Desfoque (blur)"
+            value={s.material.blur}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={(v) => s.setMaterial({ blur: v })}
+          />
+          <Slider
+            label="Verniz (clearcoat)"
+            value={s.material.clearcoat}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={(v) => s.setMaterial({ clearcoat: v })}
+          />
+          <Slider
+            label="Aspereza (roughness)"
+            value={s.material.roughness}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={(v) => s.setMaterial({ roughness: v })}
+          />
+          <Slider
+            label="Reflexividade"
+            value={s.material.reflectivity}
+            min={0}
+            max={1}
+            step={0.01}
+            onChange={(v) => s.setMaterial({ reflectivity: v })}
+          />
+          <p className="text-xs leading-relaxed text-[var(--muted)]">
+            Ajuste e me passe os valores que preferir.
+          </p>
+        </Section>
       </div>
 
       <div className="border-t border-[var(--border)] px-5 py-3 text-center text-[10px] text-[var(--muted)]">

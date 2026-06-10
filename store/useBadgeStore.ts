@@ -3,7 +3,8 @@ import { getVertical } from "@/lib/verticals";
 
 export type BgPattern = "none" | "lines" | "dots" | "grid" | "noise" | "diagonal";
 
-export type FoodType = "hotdog" | "ketchup" | "mustard" | "fries";
+// "fries" is the dice option; it spawns several independent "fry" sticks.
+export type FoodType = "hotdog" | "ketchup" | "mustard" | "fries" | "fry";
 
 export interface FoodThrow {
   id: number;
@@ -50,6 +51,15 @@ export interface PhysicsConfig {
   shuffleNonce: number;
 }
 
+/** Tunable look of the glossy reflection on the badge face. */
+export interface MaterialConfig {
+  intensity: number; // envMapIntensity — "opacity"/strength of the reflection
+  blur: number; // clearcoatRoughness — 0 sharp glint .. 1 soft sheen
+  clearcoat: number; // amount of glossy coat
+  roughness: number; // base matte..glossy
+  reflectivity: number; // fresnel reflectivity
+}
+
 export interface BadgeState {
   // Selected Grupo Ragga vertical (drives lanyard color + logo)
   vertical: string;
@@ -78,6 +88,9 @@ export interface BadgeState {
   // Physics
   physics: PhysicsConfig;
 
+  // Reflection / finish of the badge face
+  material: MaterialConfig;
+
   // Food fun
   foodThrows: FoodThrow[];
   stains: Stain[];
@@ -90,6 +103,7 @@ export interface BadgeState {
   setPhoto: (p: Partial<PhotoConfig>) => void;
   setLogo: (l: Partial<LogoConfig>) => void;
   setPhysics: (p: Partial<PhysicsConfig>) => void;
+  setMaterial: (m: Partial<MaterialConfig>) => void;
   shuffle: () => void;
   throwFood: () => void;
   removeFood: (id: number) => void;
@@ -129,6 +143,14 @@ const initialPhysics: PhysicsConfig = {
   shuffleNonce: 0,
 };
 
+const initialMaterial: MaterialConfig = {
+  intensity: 0.45,
+  blur: 0.28,
+  clearcoat: 0.5,
+  roughness: 0.5,
+  reflectivity: 0.2,
+};
+
 const initialState = {
   vertical: "mkt-vendas",
   fullName: "Ana Ragga",
@@ -147,6 +169,7 @@ const initialState = {
   patternDensity: 24,
   patternOpacity: 0.12,
   physics: initialPhysics,
+  material: initialMaterial,
   foodThrows: [],
   stains: [],
   resetNonce: 0,
@@ -178,18 +201,29 @@ export const useBadgeStore = create<BadgeState>((set) => ({
   setPhysics: (p) =>
     set((s) => ({ physics: { ...s.physics, ...p } })),
 
+  setMaterial: (m) =>
+    set((s) => ({ material: { ...s.material, ...m } })),
+
   shuffle: () =>
     set((s) => ({
       physics: { ...s.physics, shuffleNonce: s.physics.shuffleNonce + 1 },
     })),
 
-  // Roll the dice: throw one random food item at the badge.
+  // Roll the dice: throw one random food at the badge. "fries" scatters
+  // 8 independent fry sticks; everything else is a single item.
   throwFood: () =>
     set((s) => {
-      const type = FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
-      const next = [...s.foodThrows, { id: ++foodCounter, type }];
-      // keep at most 8 live items
-      return { foodThrows: next.slice(-8) };
+      const pick = FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
+      const additions: FoodThrow[] =
+        pick === "fries"
+          ? Array.from({ length: 8 }, () => ({
+              id: ++foodCounter,
+              type: "fry" as FoodType,
+            }))
+          : [{ id: ++foodCounter, type: pick }];
+      const next = [...s.foodThrows, ...additions];
+      // keep a generous cap (a fries roll alone is 8 bodies)
+      return { foodThrows: next.slice(-26) };
     }),
 
   removeFood: (id) =>
