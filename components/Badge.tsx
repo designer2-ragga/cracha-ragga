@@ -197,11 +197,10 @@ export default function Badge() {
         />
       </RoundedBox>
 
-      {/* printed face — the artwork. Tone-mapping is disabled on the Canvas
-          (`flat`) so colours stay bright and accurate, while a soft clearcoat
-          adds a subtle, realistic glossy sheen that glints as the badge sways. */}
+      {/* printed face — the artwork, sized exactly to the card so the art
+          reaches the rounded edges with no white bleed. */}
       <mesh position={[0, 0, CARD_T / 2 + 0.003]}>
-        <planeGeometry args={[CARD_W - 0.02, CARD_H - 0.02]} />
+        <planeGeometry args={[CARD_W, CARD_H]} />
         <meshBasicMaterial map={texture} transparent toneMapped={false} />
       </mesh>
 

@@ -29,7 +29,9 @@ export default function Lanyard() {
   // Strap texture: the selected vertical's logo tiled along the lanyard.
   const strip = useMemo(() => {
     const c = document.createElement("canvas");
-    c.width = 256;
+    // tile aspect matches the visible strap (≈1.65 long : 1.2 wide) so the
+    // horizontal logo is not stretched when mapped onto the band.
+    c.width = 352;
     c.height = 256;
     const ctx = c.getContext("2d")!;
     const tex = new THREE.CanvasTexture(c);
@@ -43,14 +45,14 @@ export default function Lanyard() {
   // Strap = the vertical's official horizontal logo (white) tiled along it.
   useEffect(() => {
     const ctx = strip.ctx;
-    const W = 256;
-    const H = 256;
+    const W = ctx.canvas.width;
+    const H = ctx.canvas.height;
     const draw = (img?: HTMLImageElement) => {
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = lanyardColor;
       ctx.fillRect(0, 0, W, H);
       if (img && img.complete && img.naturalWidth) {
-        const tw = W * 0.88;
+        const tw = W * 0.86;
         const th = tw * (img.naturalHeight / img.naturalWidth);
         // recolour the brand logo to white for the coloured strap
         const t = document.createElement("canvas");
@@ -76,8 +78,8 @@ export default function Lanyard() {
 
   useEffect(() => () => strip.tex.dispose(), [strip]);
 
-  // Repetitions of the horizontal logo along the strap.
-  const repeatX = Math.max(1, Math.round(2 * physics.ropeLength));
+  // One undistorted logo along the strap (tile aspect already matches).
+  const repeatX = 1;
 
   const fixed = useRef<RapierRigidBody>(null!);
   const j1 = useRef<RapierRigidBody>(null!);
