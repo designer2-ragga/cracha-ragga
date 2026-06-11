@@ -10,7 +10,6 @@ import { downloadBadgePdf } from "@/lib/exportBadge";
 
 function SceneControls() {
   const recenter = useBadgeStore((s) => s.recenter);
-  const shuffle = useBadgeStore((s) => s.shuffle);
   const throwFood = useBadgeStore((s) => s.throwFood);
 
   // Export the badge ARTWORK as a print-ready PDF (not a screenshot of the
@@ -23,26 +22,20 @@ function SceneControls() {
     <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center gap-3">
       <button
         onClick={recenter}
-        className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--panel)]/80 px-5 py-2.5 text-xs font-semibold tracking-wide text-[var(--text)] backdrop-blur transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--panel)]/80 px-5 py-2.5 text-xs font-semibold tracking-wide text-[var(--text)] backdrop-blur transition hover:border-[var(--accent)] hover:text-[var(--accent)] active:scale-[0.96]"
       >
         ↺ Resetar Posição
       </button>
       <button
-        onClick={shuffle}
-        className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--panel)]/80 px-5 py-2.5 text-xs font-semibold tracking-wide text-[var(--text)] backdrop-blur transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-      >
-        ⤬ Balançar
-      </button>
-      <button
         onClick={throwFood}
         title="Jogue um lanche aleatório no crachá!"
-        className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--panel)]/80 px-4 py-2.5 text-base leading-none backdrop-blur transition hover:border-[var(--accent)] hover:scale-110"
+        className="pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--panel)]/80 px-4 py-2.5 text-base leading-none backdrop-blur transition hover:border-[var(--accent)] active:scale-[0.96]"
       >
         🎲
       </button>
       <button
         onClick={download}
-        className="pointer-events-auto rounded-full bg-[var(--accent)] px-5 py-2.5 text-xs font-semibold tracking-wide text-white shadow-lg shadow-orange-900/30 transition hover:brightness-110"
+        className="pointer-events-auto rounded-full bg-[var(--accent)] px-5 py-2.5 text-xs font-semibold tracking-wide text-white shadow-lg shadow-orange-900/30 transition hover:brightness-110 active:scale-[0.96]"
       >
         ↓ Baixar PDF
       </button>

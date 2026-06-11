@@ -75,7 +75,7 @@ export default function CameraCapture({
     <>
       <button
         onClick={start}
-        className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
+        className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-medium text-[var(--text)] transition hover:border-[var(--accent)] active:scale-[0.96]"
       >
         Abrir câmera
       </button>
@@ -102,14 +102,14 @@ export default function CameraCapture({
             <div className="mt-4 flex gap-2">
               <button
                 onClick={close}
-                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-xs font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-xs font-medium text-[var(--text)] transition hover:border-[var(--accent)] active:scale-[0.96]"
               >
                 Cancelar
               </button>
               {!error && (
                 <button
                   onClick={capture}
-                  className="flex-1 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white transition hover:brightness-110"
+                  className="flex-1 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.96]"
                 >
                   Capturar
                 </button>

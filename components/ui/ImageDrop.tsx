@@ -38,9 +38,15 @@ export default function ImageDrop({
           setOver(false);
           handleFile(e.dataTransfer.files?.[0]);
         }}
-        className={`flex h-20 w-20 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden border-2 border-dashed bg-[var(--panel-2)] transition ${
+        className={`flex h-20 w-20 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden bg-[var(--panel-2)] transition active:scale-[0.97] ${
           circular ? "rounded-full" : "rounded-xl"
-        } ${over ? "border-[var(--accent)]" : "border-[var(--border)]"}`}
+        } ${
+          src
+            ? "ring-1 ring-inset ring-white/10"
+            : `border-2 border-dashed ${
+                over ? "border-[var(--accent)]" : "border-[var(--border)]"
+              }`
+        }`}
       >
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -58,7 +64,7 @@ export default function ImageDrop({
       <div className="flex flex-col gap-2">
         <button
           onClick={() => inputRef.current?.click()}
-          className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
+          className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-xs font-medium text-[var(--text)] transition hover:border-[var(--accent)] active:scale-[0.96]"
         >
           Enviar imagem
         </button>
