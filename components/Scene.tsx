@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback } from "react";
+import { Suspense, useCallback, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import { Physics } from "@react-three/rapier";
@@ -50,6 +50,30 @@ export default function Scene() {
   const resetNonce = useBadgeStore((s) => s.resetNonce);
   const physicsKey = `${physics.ropeLength.toFixed(2)}-${physics.stiffness.toFixed(2)}-${resetNonce}`;
   const gravityY = -22 * physics.stiffness;
+
+  // Smoothly fade out sauce stains when the user re-centers.
+  const recenterNonce = useBadgeStore((s) => s.recenterNonce);
+  const firstRecenter = useRef(true);
+  useEffect(() => {
+    if (firstRecenter.current) {
+      firstRecenter.current = false;
+      return;
+    }
+    if (useBadgeStore.getState().stains.length === 0) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const dur = 650;
+    const tick = () => {
+      const k = Math.min(1, (performance.now() - t0) / dur);
+      // ease-in-out
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      useBadgeStore.getState().setStainAlpha(1 - e);
+      if (k < 1) raf = requestAnimationFrame(tick);
+      else useBadgeStore.getState().clearStains();
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [recenterNonce]);
 
   return (
     <div className="relative h-full w-full">
@@ -136,18 +160,6 @@ export default function Scene() {
       </Canvas>
 
       <SceneControls />
-
-      <div className="pointer-events-none absolute left-6 top-6 z-10 select-none">
-        <div className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--muted)]">
-          Grupo Ragga
-        </div>
-        <div className="mt-1 text-2xl font-bold tracking-tight text-[var(--text)]">
-          Crachá <span className="text-[var(--accent)]">Studio</span>
-        </div>
-        <div className="mt-1 text-xs text-[var(--muted)]">
-          Arraste o crachá para balançar
-        </div>
-      </div>
     </div>
   );
 }

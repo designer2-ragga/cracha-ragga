@@ -81,21 +81,29 @@ function roundedTopRect(
 export function drawBadge(
   ctx: CanvasRenderingContext2D,
   s: BadgeState,
-  onImageReady: () => void
+  onImageReady: () => void,
+  opts: { bleed?: boolean } = {}
 ) {
   const vertical = getVertical(s.vertical);
   const keyColor = vertical.color;
+  // bleed = square corners for print export; otherwise rounded to match card
+  const radius = opts.bleed ? 0 : CARD_RADIUS;
 
   ctx.clearRect(0, 0, TEX_W, TEX_H);
 
-  // white card base (matches the 3D card's rounded corners)
+  // white card base
   ctx.fillStyle = "#ffffff";
-  roundRect(ctx, 0, 0, TEX_W, TEX_H, CARD_RADIUS);
-  ctx.fill();
+  if (radius > 0) {
+    roundRect(ctx, 0, 0, TEX_W, TEX_H, radius);
+    ctx.fill();
+  } else {
+    ctx.fillRect(0, 0, TEX_W, TEX_H);
+  }
 
   // ---- Orange top panel with the Ragga pattern ----
   ctx.save();
-  roundedTopRect(ctx, 0, 0, TEX_W, PANEL_H, CARD_RADIUS);
+  if (radius > 0) roundedTopRect(ctx, 0, 0, TEX_W, PANEL_H, radius);
+  else ctx.rect(0, 0, TEX_W, PANEL_H);
   ctx.clip();
   const pat = loadImage(`/badge/patterns/${vertical.key}.svg`, onImageReady);
   if (pat && pat.complete && pat.naturalWidth) {
@@ -168,7 +176,8 @@ export function drawBadge(
   drawLockup(ctx, vertical.key, onImageReady);
 
   // ---- Sauce stains (painted on top of everything) ----
-  for (const st of s.stains) drawStain(ctx, st);
+  if (s.stainAlpha > 0.001)
+    for (const st of s.stains) drawStain(ctx, st, s.stainAlpha);
 }
 
 function drawLockup(
@@ -205,7 +214,8 @@ function placeholderPhoto(
 
 function drawStain(
   ctx: CanvasRenderingContext2D,
-  st: { x: number; y: number; r: number; color: string; seed: number }
+  st: { x: number; y: number; r: number; color: string; seed: number },
+  alpha = 1
 ) {
   let n = st.seed;
   const rnd = () => {
@@ -217,7 +227,7 @@ function drawStain(
   ctx.translate(st.x, st.y);
   ctx.fillStyle = st.color;
 
-  ctx.globalAlpha = 0.92;
+  ctx.globalAlpha = 0.92 * alpha;
   const pts = 11;
   ctx.beginPath();
   for (let i = 0; i <= pts; i++) {
@@ -236,13 +246,13 @@ function drawStain(
     const a = rnd() * Math.PI * 2;
     const dist = st.r * (1.0 + rnd() * 1.3);
     const dr = st.r * (0.08 + rnd() * 0.22);
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = 0.85 * alpha;
     ctx.beginPath();
     ctx.arc(Math.cos(a) * dist, Math.sin(a) * dist, dr, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  ctx.globalAlpha = 0.25;
+  ctx.globalAlpha = 0.25 * alpha;
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
   ctx.arc(-st.r * 0.25, -st.r * 0.25, st.r * 0.28, 0, Math.PI * 2);

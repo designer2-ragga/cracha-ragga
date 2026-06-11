@@ -2,34 +2,37 @@
 
 import { useBadgeStore } from "@/store/useBadgeStore";
 import { VERTICALS } from "@/lib/verticals";
-import Section from "./ui/Section";
 import { TextField, Slider } from "./ui/Field";
-import ImageDrop from "./ui/ImageDrop";
-import CameraCapture from "./ui/CameraCapture";
+import PhotoUploader from "./ui/PhotoUploader";
 import XYPad from "./ui/XYPad";
+
+function Block({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-4 border-b border-[var(--border)] px-5 py-5">
+      {children}
+    </div>
+  );
+}
 
 export default function Sidebar() {
   const s = useBadgeStore();
 
   return (
     <aside className="z-20 flex h-screen w-[340px] flex-shrink-0 flex-col border-l border-[var(--border)] bg-[var(--panel)]">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-5">
-        <div>
-          <h1 className="text-sm font-bold uppercase tracking-[0.25em] text-[var(--text)]">
-            Personalizar
-          </h1>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">
-            Configure seu crachá
-          </p>
-        </div>
-        <span className="rounded-full bg-[var(--accent)]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--accent)]">
-          Ragga
-        </span>
+      {/* header — Grupo Ragga horizontal logo */}
+      <div className="flex items-center border-b border-[var(--border)] px-5 py-5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/badge/grupo-horizontal.svg"
+          alt="Grupo Ragga"
+          className="h-7 w-auto"
+          style={{ filter: "brightness(0) invert(1)" }}
+        />
       </div>
 
       <div className="scroll-thin flex-1 overflow-y-auto">
-        {/* Vertical selector — dropdown only */}
-        <Section title="Vertical Ragga" defaultOpen>
+        {/* vertical */}
+        <Block>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-[var(--muted)]">
               Selecione sua vertical
@@ -46,18 +49,28 @@ export default function Sidebar() {
                   </option>
                 ))}
               </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
-                ⌄
-              </span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+              >
+                <path
+                  d="M6 9.5 12 15.5 18 9.5"
+                  stroke="currentColor"
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
           </label>
-          <p className="text-xs leading-relaxed text-[var(--muted)]">
-            A cor do crachá, do cordão e o logo seguem a vertical escolhida.
-          </p>
-        </Section>
+        </Block>
 
-        {/* Basic information */}
-        <Section title="Informações Básicas" defaultOpen>
+        {/* basic info */}
+        <Block>
           <TextField
             label="Nome Completo"
             value={s.fullName}
@@ -68,22 +81,11 @@ export default function Sidebar() {
             value={s.role}
             onChange={(v) => s.set("role", v)}
           />
-        </Section>
+        </Block>
 
-        {/* Person photo */}
-        <Section title="Foto da Pessoa" defaultOpen>
-          <div className="flex items-start justify-between gap-3">
-            <ImageDrop
-              src={s.photo.src}
-              circular
-              onChange={(src) => s.setPhoto({ src })}
-            />
-            <CameraCapture onCapture={(src) => s.setPhoto({ src })} />
-          </div>
-          <p className="text-xs leading-relaxed text-[var(--muted)]">
-            O recorte circular é fixo — use o zoom e a posição para enquadrar a
-            foto dentro dele.
-          </p>
+        {/* photo */}
+        <Block>
+          <PhotoUploader src={s.photo.src} onChange={(src) => s.setPhoto({ src })} />
           <Slider
             label="Zoom"
             value={s.photo.scale}
@@ -100,8 +102,7 @@ export default function Sidebar() {
             max={200}
             onChange={(px, py) => s.setPhoto({ posX: px, posY: py })}
           />
-        </Section>
-
+        </Block>
       </div>
 
       <div className="border-t border-[var(--border)] px-5 py-3 text-center text-[10px] text-[var(--muted)]">

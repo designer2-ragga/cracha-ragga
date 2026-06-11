@@ -109,10 +109,16 @@ export interface BadgeState {
   removeFood: (id: number) => void;
   addStain: (s: Stain) => void;
   recenter: () => void;
+  setStainAlpha: (a: number) => void;
+  clearStains: () => void;
   reset: () => void;
 
-  // bump to remount the physics world (re-centers the badge)
+  // bump to remount the physics world (full reset)
   resetNonce: number;
+  // bump to trigger a smooth re-center animation
+  recenterNonce: number;
+  // global multiplier for stain opacity (used for the fade-out on recenter)
+  stainAlpha: number;
 }
 
 const initialPhoto: PhotoConfig = {
@@ -173,6 +179,8 @@ const initialState = {
   foodThrows: [],
   stains: [],
   resetNonce: 0,
+  recenterNonce: 0,
+  stainAlpha: 1,
   rev: 0,
 };
 
@@ -232,14 +240,17 @@ export const useBadgeStore = create<BadgeState>((set) => ({
   addStain: (stain) =>
     set((s) => ({ stains: [...s.stains, stain].slice(-40), rev: s.rev + 1 })),
 
-  // Re-center the badge and wipe any food/stains, keeping the design.
+  // Re-center the badge (smooth, handled in the 3D scene) and clear food.
+  // Stains fade out separately via the fade animation.
   recenter: () =>
     set((s) => ({
       foodThrows: [],
-      stains: [],
-      resetNonce: s.resetNonce + 1,
-      rev: s.rev + 1,
+      recenterNonce: s.recenterNonce + 1,
     })),
+
+  setStainAlpha: (a) => set((s) => ({ stainAlpha: a, rev: s.rev + 1 })),
+
+  clearStains: () => set((s) => ({ stains: [], stainAlpha: 1, rev: s.rev + 1 })),
 
   reset: () =>
     set((s) => ({
