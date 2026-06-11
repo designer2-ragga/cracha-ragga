@@ -47,8 +47,9 @@ export default function Lanyard() {
 
   useEffect(() => () => strip.tex.dispose(), [strip]);
 
-  // How many logo+brand tiles repeat along the wide strap (kept ~square).
-  const repeatX = Math.max(3, Math.round(5 * physics.ropeLength));
+  // How many logo+brand tiles repeat along the strap (kept ~square for the
+  // wider strap below).
+  const repeatX = Math.max(2, Math.round(2.5 * physics.ropeLength));
 
   const fixed = useRef<RapierRigidBody>(null!);
   const j1 = useRef<RapierRigidBody>(null!);
@@ -268,7 +269,7 @@ export default function Lanyard() {
           repeat={[repeatX, 1]}
           depthTest={false}
           resolution={[size.width, size.height]}
-          lineWidth={0.6}
+          lineWidth={1.2}
         />
       </mesh>
     </>
