@@ -188,12 +188,12 @@ export default function Badge() {
       >
         <meshPhysicalMaterial
           color="#ffffff"
-          clearcoat={0.35}
-          clearcoatRoughness={0.55}
-          roughness={0.62}
+          clearcoat={0.22}
+          clearcoatRoughness={0.6}
+          roughness={0.72}
           metalness={0}
-          envMapIntensity={0.28}
-          reflectivity={0.2}
+          envMapIntensity={0.16}
+          reflectivity={0.14}
         />
       </RoundedBox>
 
