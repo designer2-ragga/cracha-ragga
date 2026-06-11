@@ -4,6 +4,9 @@ import { getVertical } from "@/lib/verticals";
 export const TEX_W = 768;
 export const TEX_H = 1080;
 
+const PANEL_H = 790; // orange top panel height (Figma)
+const CARD_RADIUS = 48; // matches the 3D card's rounded corners
+
 // Simple in-memory image cache so we don't reload data URLs every frame.
 const imageCache = new Map<string, HTMLImageElement>();
 
@@ -21,6 +24,14 @@ export function loadImage(
   img.src = src;
   imageCache.set(src, img);
   return null;
+}
+
+function hexToRgba(hex: string, a: number) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
 }
 
 function roundRect(
@@ -41,162 +52,99 @@ function roundRect(
   ctx.closePath();
 }
 
-function drawPattern(ctx: CanvasRenderingContext2D, s: BadgeState) {
-  if (s.bgPattern === "none") return;
-  ctx.save();
-  ctx.globalAlpha = s.patternOpacity;
-  ctx.strokeStyle = s.textColor;
-  ctx.fillStyle = s.textColor;
-  const gap = Math.max(8, 90 - s.patternDensity * 2);
-
-  switch (s.bgPattern) {
-    case "lines":
-      ctx.lineWidth = 1.2;
-      for (let y = 0; y < TEX_H; y += gap) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(TEX_W, y);
-        ctx.stroke();
-      }
-      break;
-    case "diagonal":
-      ctx.lineWidth = 1.2;
-      for (let x = -TEX_H; x < TEX_W; x += gap) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x + TEX_H, TEX_H);
-        ctx.stroke();
-      }
-      break;
-    case "dots":
-      for (let y = gap; y < TEX_H; y += gap) {
-        for (let x = gap; x < TEX_W; x += gap) {
-          ctx.beginPath();
-          ctx.arc(x, y, 2.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      break;
-    case "grid":
-      ctx.lineWidth = 1;
-      for (let x = 0; x < TEX_W; x += gap) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, TEX_H);
-        ctx.stroke();
-      }
-      for (let y = 0; y < TEX_H; y += gap) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(TEX_W, y);
-        ctx.stroke();
-      }
-      break;
-    case "noise": {
-      const n = s.patternDensity * 120;
-      for (let i = 0; i < n; i++) {
-        // deterministic-ish scatter
-        const x = (Math.sin(i * 12.9898) * 43758.5453) % 1;
-        const y = (Math.sin(i * 78.233) * 12543.123) % 1;
-        ctx.fillRect(Math.abs(x) * TEX_W, Math.abs(y) * TEX_H, 1.6, 1.6);
-      }
-      break;
-    }
-  }
-  ctx.restore();
+/** Rectangle with only the TOP corners rounded. */
+function roundedTopRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
 }
 
-function fitText(
+/** Draw an image recoloured to a flat tint (keeps alpha shape). */
+function drawTinted(
   ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-  baseSize: number,
-  weight = "700"
-): number {
-  let size = baseSize;
-  do {
-    ctx.font = `${weight} ${size}px ui-sans-serif, system-ui, sans-serif`;
-    if (ctx.measureText(text).width <= maxWidth) break;
-    size -= 2;
-  } while (size > 12);
-  return size;
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: string
+) {
+  const t = document.createElement("canvas");
+  t.width = Math.max(1, Math.ceil(w));
+  t.height = Math.max(1, Math.ceil(h));
+  const tc = t.getContext("2d")!;
+  tc.drawImage(img, 0, 0, w, h);
+  tc.globalCompositeOperation = "source-in";
+  tc.fillStyle = color;
+  tc.fillRect(0, 0, t.width, t.height);
+  ctx.drawImage(t, x, y);
 }
 
 /**
- * Renders the full badge face onto the provided 2D context.
- * `onImageReady` is called when a deferred image finishes loading so the
- * caller can re-render.
+ * Renders the badge face — faithful to the Figma layout:
+ *  orange (vertical key-color) patterned top panel, white lower band,
+ *  centred photo circle, name + role in Dotties Vanilla, and the
+ *  "ragga + vertical" lockup at the bottom.
  */
 export function drawBadge(
   ctx: CanvasRenderingContext2D,
   s: BadgeState,
   onImageReady: () => void
 ) {
-  ctx.clearRect(0, 0, TEX_W, TEX_H);
-
-  // Card body
-  ctx.fillStyle = s.badgeColor;
-  roundRect(ctx, 0, 0, TEX_W, TEX_H, 48);
-  ctx.fill();
-
-  // background pattern
-  drawPattern(ctx, s);
-
-  // Lanyard slot
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  roundRect(ctx, TEX_W / 2 - 90, 34, 180, 26, 13);
-  ctx.fill();
-
   const vertical = getVertical(s.vertical);
   const keyColor = vertical.color;
 
-  // ---- Vertical logo (above the photo) ----
-  {
-    const sym = vertical.sym;
-    const targetW = 170;
-    const scale = targetW / sym.w;
-    const cx = TEX_W / 2;
-    const cy = 150;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
-    ctx.translate(-sym.w / 2, -sym.h / 2);
-    ctx.fillStyle = s.textColor;
-    ctx.globalAlpha = 0.95;
-    ctx.fill(new Path2D(sym.d));
-    ctx.restore();
-    ctx.globalAlpha = 1;
-  }
+  ctx.clearRect(0, 0, TEX_W, TEX_H);
 
-  // ---- Photo: FIXED circle, image is zoomed (scale) + panned (posX/posY) ----
-  const R = 150; // fixed radius — the circle never changes
-  const pcx = TEX_W / 2;
-  const pcy = 430;
+  // white card base (matches the 3D card's rounded corners)
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, 0, 0, TEX_W, TEX_H, CARD_RADIUS);
+  ctx.fill();
 
+  // ---- Orange top panel with the Ragga pattern ----
   ctx.save();
-  // key-color border ring (themed by the selected vertical)
-  ctx.beginPath();
-  ctx.arc(pcx, pcy, R + 12, 0, Math.PI * 2);
-  ctx.fillStyle = keyColor;
-  ctx.fill();
-  // thin light separator so the ring reads on a same-color card
-  ctx.beginPath();
-  ctx.arc(pcx, pcy, R + 5, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.fill();
+  roundedTopRect(ctx, 0, 0, TEX_W, PANEL_H, CARD_RADIUS);
+  ctx.clip();
+  const pat = loadImage("/badge/pattern-mkt.png", onImageReady);
+  if (pat && pat.complete && pat.naturalWidth) {
+    const sc = Math.max(TEX_W / pat.naturalWidth, PANEL_H / pat.naturalHeight);
+    const dw = pat.naturalWidth * sc;
+    const dh = pat.naturalHeight * sc;
+    ctx.drawImage(pat, (TEX_W - dw) / 2, (PANEL_H - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = keyColor;
+    ctx.fillRect(0, 0, TEX_W, PANEL_H);
+  }
+  ctx.fillStyle = hexToRgba(keyColor, 0.82);
+  ctx.fillRect(0, 0, TEX_W, PANEL_H);
+  ctx.restore();
 
-  // clip to the fixed circle
+  // ---- Photo circle (fixed) — zoom + pan inside ----
+  const R = 163;
+  const pcx = 384;
+  const pcy = 343;
+  ctx.save();
   ctx.beginPath();
   ctx.arc(pcx, pcy, R, 0, Math.PI * 2);
   ctx.clip();
-  // white backing
-  ctx.fillStyle = "#f0f0f0";
+  ctx.fillStyle = "#d6d8db";
   ctx.fillRect(pcx - R, pcy - R, R * 2, R * 2);
-
   if (s.photo.src) {
     const img = loadImage(s.photo.src, onImageReady);
     if (img && img.complete && img.naturalWidth) {
-      // cover-fit the circle, then apply zoom (scale) and pan (posX/posY)
       const base = R * 2;
       const ir = img.naturalWidth / img.naturalHeight;
       let dw = base;
@@ -220,43 +168,82 @@ export function drawBadge(
   }
   ctx.restore();
 
-  // ---- Text block ----
+  // ---- Name + role (Dotties Vanilla) ----
   ctx.textAlign = "center";
-  ctx.fillStyle = s.textColor;
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#ffffff";
 
-  let ty = pcy + R + 100;
-
-  const nameSize = fitText(ctx, s.fullName, TEX_W - 120, 64, "800");
-  ctx.font = `800 ${nameSize}px ui-sans-serif, system-ui, sans-serif`;
-  ctx.fillText(s.fullName, TEX_W / 2, ty);
-  ty += 58;
-
-  if (s.role) {
-    ctx.globalAlpha = 0.95;
-    const rs = fitText(ctx, s.role, TEX_W - 140, 36, "600");
-    ctx.font = `600 ${rs}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.fillText(s.role.toUpperCase(), TEX_W / 2, ty);
-    ty += 50;
-    ctx.globalAlpha = 1;
+  let nameSize = 57;
+  ctx.font = `800 ${nameSize}px "Dotties Vanilla", system-ui, sans-serif`;
+  while (ctx.measureText(s.fullName).width > TEX_W - 130 && nameSize > 22) {
+    nameSize -= 2;
+    ctx.font = `800 ${nameSize}px "Dotties Vanilla", system-ui, sans-serif`;
   }
+  ctx.fillText(s.fullName, 384, 595);
 
-  // department comes from the selected vertical
-  ctx.globalAlpha = 0.75;
-  const dep = vertical.label;
-  const ds = fitText(ctx, dep, TEX_W - 160, 30, "600");
-  ctx.font = `600 ${ds}px ui-sans-serif, system-ui, sans-serif`;
-  ctx.fillText(dep, TEX_W / 2, ty);
-  ctx.globalAlpha = 1;
+  ctx.font = `400 43px "Dotties Vanilla", system-ui, sans-serif`;
+  ctx.fillText(s.role, 384, 668);
+
+  // ---- Bottom lockup: ragga wordmark + vertical label ----
+  drawLockup(ctx, vertical.label, keyColor, onImageReady);
 
   // ---- Sauce stains (painted on top of everything) ----
   for (const st of s.stains) drawStain(ctx, st);
+}
+
+function drawLockup(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  keyColor: string,
+  onReady: () => void
+) {
+  const wm = loadImage("/badge/ragga-wordmark.svg", onReady);
+  const text = label.toUpperCase();
+  const labelFont = `800 30px "Dotties Vanilla", system-ui, sans-serif`;
+
+  ctx.font = labelFont;
+  const labelW = ctx.measureText(text).width;
+  const wmH = 54;
+  const wmW =
+    wm && wm.naturalWidth ? wmH * (wm.naturalWidth / wm.naturalHeight) : 208;
+  const gap = 18;
+  const totalW = wmW + gap + labelW;
+  const cy = 935;
+  let x = 384 - totalW / 2;
+
+  if (wm && wm.complete && wm.naturalWidth) {
+    drawTinted(ctx, wm, x, cy - wmH / 2, wmW, wmH, keyColor);
+  }
+  x += wmW + gap;
+
+  ctx.font = labelFont;
+  ctx.fillStyle = keyColor;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, cy + 1);
+}
+
+function placeholderPhoto(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number
+) {
+  ctx.fillStyle = "#d6d8db";
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.16)";
+  ctx.beginPath();
+  ctx.arc(cx, cy - r * 0.18, r * 0.36, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy + r * 0.82, r * 0.6, Math.PI, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawStain(
   ctx: CanvasRenderingContext2D,
   st: { x: number; y: number; r: number; color: string; seed: number }
 ) {
-  // deterministic pseudo-random from seed
   let n = st.seed;
   const rnd = () => {
     n = (n * 9301 + 49297) % 233280;
@@ -267,7 +254,6 @@ function drawStain(
   ctx.translate(st.x, st.y);
   ctx.fillStyle = st.color;
 
-  // main organic blob
   ctx.globalAlpha = 0.92;
   const pts = 11;
   ctx.beginPath();
@@ -282,7 +268,6 @@ function drawStain(
   ctx.closePath();
   ctx.fill();
 
-  // satellite droplets
   const drops = 4 + Math.floor(rnd() * 5);
   for (let i = 0; i < drops; i++) {
     const a = rnd() * Math.PI * 2;
@@ -294,7 +279,6 @@ function drawStain(
     ctx.fill();
   }
 
-  // glossy highlight
   ctx.globalAlpha = 0.25;
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
@@ -302,22 +286,4 @@ function drawStain(
   ctx.fill();
   ctx.restore();
   ctx.globalAlpha = 1;
-}
-
-function placeholderPhoto(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  r: number
-) {
-  ctx.fillStyle = "rgba(0,0,0,0.06)";
-  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-  // simple silhouette
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.beginPath();
-  ctx.arc(cx, cy - r * 0.18, r * 0.38, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx, cy + r * 0.85, r * 0.62, Math.PI, Math.PI * 2);
-  ctx.fill();
 }

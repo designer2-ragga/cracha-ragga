@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
@@ -94,7 +94,7 @@ const STREAK_BLUR = 1.0;
 
 export default function Badge() {
   const rev = useBadgeStore((s) => s.rev);
-  const badgeColor = useBadgeStore((s) => s.badgeColor);
+  const [fontsReady, setFontsReady] = useState(false);
 
   const { canvas, ctx, texture } = useMemo(() => {
     const c = document.createElement("canvas");
@@ -107,14 +107,41 @@ export default function Badge() {
     return { canvas: c, ctx: context, texture: tex };
   }, []);
 
-  // Redraw whenever any badge field changes.
+  // Load the Dotties Vanilla font (used by the badge artwork) once.
+  useEffect(() => {
+    let alive = true;
+    const faces = [
+      new FontFace(
+        "Dotties Vanilla",
+        "url(/fonts/DottiesVanilla-ExtraBold.woff2)",
+        { weight: "800" }
+      ),
+      new FontFace(
+        "Dotties Vanilla",
+        "url(/fonts/DottiesVanilla-Regular.woff2)",
+        { weight: "400" }
+      ),
+    ];
+    Promise.all(faces.map((f) => f.load()))
+      .then((loaded) => {
+        if (!alive) return;
+        loaded.forEach((f) => document.fonts.add(f));
+        setFontsReady(true);
+      })
+      .catch(() => alive && setFontsReady(true));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Redraw whenever any badge field changes (or fonts finish loading).
   useEffect(() => {
     const render = () => {
       drawBadge(ctx, useBadgeStore.getState(), render);
       texture.needsUpdate = true;
     };
     render();
-  }, [rev, ctx, texture, canvas]);
+  }, [rev, ctx, texture, canvas, fontsReady]);
 
   useEffect(() => () => texture.dispose(), [texture]);
 
@@ -160,7 +187,7 @@ export default function Badge() {
         receiveShadow
       >
         <meshPhysicalMaterial
-          color={badgeColor}
+          color="#ffffff"
           clearcoat={0.7}
           clearcoatRoughness={0.35}
           roughness={0.5}
