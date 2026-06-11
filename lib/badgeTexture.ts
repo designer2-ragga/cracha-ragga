@@ -97,7 +97,7 @@ export function drawBadge(
   ctx.save();
   roundedTopRect(ctx, 0, 0, TEX_W, PANEL_H, CARD_RADIUS);
   ctx.clip();
-  const pat = loadImage("/badge/pattern-mkt.png", onImageReady);
+  const pat = loadImage(`/badge/patterns/${vertical.key}.svg`, onImageReady);
   if (pat && pat.complete && pat.naturalWidth) {
     const sc = Math.max(TEX_W / pat.naturalWidth, PANEL_H / pat.naturalHeight);
     const dw = pat.naturalWidth * sc;
@@ -107,7 +107,8 @@ export function drawBadge(
     ctx.fillStyle = keyColor;
     ctx.fillRect(0, 0, TEX_W, PANEL_H);
   }
-  ctx.fillStyle = hexToRgba(keyColor, 0.82);
+  // key-color layer at 85% over the dark-mode pattern
+  ctx.fillStyle = hexToRgba(keyColor, 0.85);
   ctx.fillRect(0, 0, TEX_W, PANEL_H);
   ctx.restore();
 
