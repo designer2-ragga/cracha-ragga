@@ -188,24 +188,24 @@ export default function Badge() {
       >
         <meshPhysicalMaterial
           color="#ffffff"
-          clearcoat={0.7}
-          clearcoatRoughness={0.35}
-          roughness={0.5}
+          clearcoat={0.35}
+          clearcoatRoughness={0.55}
+          roughness={0.62}
           metalness={0}
-          envMapIntensity={0.5}
-          reflectivity={0.3}
+          envMapIntensity={0.28}
+          reflectivity={0.2}
         />
       </RoundedBox>
 
-      {/* printed face — the artwork, sized exactly to the card so the art
-          reaches the rounded edges with no white bleed. */}
-      <mesh position={[0, 0, CARD_T / 2 + 0.003]}>
+      {/* printed face — the artwork printed ON the white plastic surface
+          (flush with the card front, not floating under a clear layer). */}
+      <mesh position={[0, 0, CARD_T / 2 + 0.0008]}>
         <planeGeometry args={[CARD_W, CARD_H]} />
         <meshBasicMaterial map={texture} transparent toneMapped={false} />
       </mesh>
 
       {/* diagonal light-streak reflection sweeping across the face */}
-      <mesh position={[0, 0, CARD_T / 2 + 0.006]}>
+      <mesh position={[0, 0, CARD_T / 2 + 0.0014]}>
         <planeGeometry args={[CARD_W - 0.06, CARD_H - 0.06]} />
         <meshBasicMaterial
           map={streak.tex}
