@@ -4,7 +4,9 @@ import { getVertical } from "@/lib/verticals";
 export const TEX_W = 768;
 export const TEX_H = 1080;
 
-const PANEL_H = 790; // orange top panel height (Figma)
+const PANEL_H = 768; // orange top panel is a 768×768 square (Figma)
+const PANEL_RADIUS = 50; // rounded top corners of the orange panel
+const BORDER_BOTTOM = 883; // the thin orange frame extends to here
 const CARD_RADIUS = 48; // matches the 3D card's rounded corners
 
 // Simple in-memory image cache so we don't reload data URLs every frame.
@@ -100,9 +102,10 @@ export function drawBadge(
     ctx.fillRect(0, 0, TEX_W, TEX_H);
   }
 
-  // ---- Orange top panel with the Ragga pattern ----
+  // ---- Orange top panel (768×768 square) with the Ragga pattern ----
+  const panelRadius = opts.bleed ? 0 : PANEL_RADIUS;
   ctx.save();
-  if (radius > 0) roundedTopRect(ctx, 0, 0, TEX_W, PANEL_H, radius);
+  if (panelRadius > 0) roundedTopRect(ctx, 0, 0, TEX_W, PANEL_H, panelRadius);
   else ctx.rect(0, 0, TEX_W, PANEL_H);
   ctx.clip();
   const pat = loadImage(`/badge/patterns/${vertical.key}.svg`, onImageReady);
@@ -120,10 +123,16 @@ export function drawBadge(
   ctx.fillRect(0, 0, TEX_W, PANEL_H);
   ctx.restore();
 
-  // ---- Photo circle (fixed) — zoom + pan inside ----
-  const R = 163;
+  // ---- Thin key-color frame around the upper card ----
+  ctx.strokeStyle = keyColor;
+  ctx.lineWidth = 4;
+  roundRect(ctx, 2, 2, TEX_W - 4, BORDER_BOTTOM - 4, panelRadius || PANEL_RADIUS);
+  ctx.stroke();
+
+  // ---- Photo circle, centered in the orange square — zoom + pan inside ----
+  const R = 216;
   const pcx = 384;
-  const pcy = 343;
+  const pcy = 384;
   ctx.save();
   ctx.beginPath();
   ctx.arc(pcx, pcy, R, 0, Math.PI * 2);
@@ -156,21 +165,24 @@ export function drawBadge(
   }
   ctx.restore();
 
-  // ---- Name + role (Dotties Vanilla) ----
+  // ---- Name (white, italic) over the orange square ----
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#ffffff";
-
   let nameSize = 57;
-  ctx.font = `800 ${nameSize}px "Dotties Vanilla", system-ui, sans-serif`;
+  const nameFont = (px: number) =>
+    `italic 500 ${px}px "Dotties Vanilla", system-ui, sans-serif`;
+  ctx.font = nameFont(nameSize);
   while (ctx.measureText(s.fullName).width > TEX_W - 130 && nameSize > 22) {
     nameSize -= 2;
-    ctx.font = `800 ${nameSize}px "Dotties Vanilla", system-ui, sans-serif`;
+    ctx.font = nameFont(nameSize);
   }
-  ctx.fillText(s.fullName, 384, 595);
+  ctx.fillText(s.fullName, 384, 675);
 
-  ctx.font = `400 43px "Dotties Vanilla", system-ui, sans-serif`;
-  ctx.fillText(s.role, 384, 668);
+  // ---- Role (key-color) in the white strip ----
+  ctx.fillStyle = keyColor;
+  ctx.font = `500 43px "Dotties Vanilla", system-ui, sans-serif`;
+  ctx.fillText(s.role, 384, 805);
 
   // ---- Bottom: official horizontal brand logo for the vertical ----
   drawLockup(ctx, vertical.key, onImageReady);
@@ -192,7 +204,7 @@ function drawLockup(
   const sc = Math.min(maxW / logo.naturalWidth, maxH / logo.naturalHeight);
   const w = logo.naturalWidth * sc;
   const h = logo.naturalHeight * sc;
-  ctx.drawImage(logo, 384 - w / 2, 935 - h / 2, w, h);
+  ctx.drawImage(logo, 384 - w / 2, 978 - h / 2, w, h);
 }
 
 function placeholderPhoto(

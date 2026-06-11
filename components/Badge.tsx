@@ -113,13 +113,13 @@ export default function Badge() {
     const faces = [
       new FontFace(
         "Dotties Vanilla",
-        "url(/fonts/DottiesVanilla-ExtraBold.woff2)",
-        { weight: "800" }
+        "url(/fonts/DottiesVanilla-Medium.woff2)",
+        { weight: "500", style: "normal" }
       ),
       new FontFace(
         "Dotties Vanilla",
-        "url(/fonts/DottiesVanilla-Regular.woff2)",
-        { weight: "400" }
+        "url(/fonts/DottiesVanilla-MediumItalic.woff2)",
+        { weight: "500", style: "italic" }
       ),
     ];
     Promise.all(faces.map((f) => f.load()))
