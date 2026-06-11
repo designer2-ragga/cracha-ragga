@@ -72,27 +72,6 @@ function roundedTopRect(
   ctx.closePath();
 }
 
-/** Draw an image recoloured to a flat tint (keeps alpha shape). */
-function drawTinted(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  color: string
-) {
-  const t = document.createElement("canvas");
-  t.width = Math.max(1, Math.ceil(w));
-  t.height = Math.max(1, Math.ceil(h));
-  const tc = t.getContext("2d")!;
-  tc.drawImage(img, 0, 0, w, h);
-  tc.globalCompositeOperation = "source-in";
-  tc.fillStyle = color;
-  tc.fillRect(0, 0, t.width, t.height);
-  ctx.drawImage(t, x, y);
-}
-
 /**
  * Renders the badge face — faithful to the Figma layout:
  *  orange (vertical key-color) patterned top panel, white lower band,
@@ -184,8 +163,8 @@ export function drawBadge(
   ctx.font = `400 43px "Dotties Vanilla", system-ui, sans-serif`;
   ctx.fillText(s.role, 384, 668);
 
-  // ---- Bottom lockup: ragga wordmark + vertical label ----
-  drawLockup(ctx, vertical.label, keyColor, onImageReady);
+  // ---- Bottom: official horizontal brand logo for the vertical ----
+  drawLockup(ctx, vertical.key, onImageReady);
 
   // ---- Sauce stains (painted on top of everything) ----
   for (const st of s.stains) drawStain(ctx, st);
@@ -193,34 +172,17 @@ export function drawBadge(
 
 function drawLockup(
   ctx: CanvasRenderingContext2D,
-  label: string,
-  keyColor: string,
+  verticalKey: string,
   onReady: () => void
 ) {
-  const wm = loadImage("/badge/ragga-wordmark.svg", onReady);
-  const text = label.toUpperCase();
-  const labelFont = `800 30px "Dotties Vanilla", system-ui, sans-serif`;
-
-  ctx.font = labelFont;
-  const labelW = ctx.measureText(text).width;
-  const wmH = 54;
-  const wmW =
-    wm && wm.naturalWidth ? wmH * (wm.naturalWidth / wm.naturalHeight) : 208;
-  const gap = 18;
-  const totalW = wmW + gap + labelW;
-  const cy = 935;
-  let x = 384 - totalW / 2;
-
-  if (wm && wm.complete && wm.naturalWidth) {
-    drawTinted(ctx, wm, x, cy - wmH / 2, wmW, wmH, keyColor);
-  }
-  x += wmW + gap;
-
-  ctx.font = labelFont;
-  ctx.fillStyle = keyColor;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, x, cy + 1);
+  const logo = loadImage(`/badge/logos/${verticalKey}.svg`, onReady);
+  if (!logo || !logo.complete || !logo.naturalWidth) return;
+  const maxW = 580;
+  const maxH = 78;
+  const sc = Math.min(maxW / logo.naturalWidth, maxH / logo.naturalHeight);
+  const w = logo.naturalWidth * sc;
+  const h = logo.naturalHeight * sc;
+  ctx.drawImage(logo, 384 - w / 2, 935 - h / 2, w, h);
 }
 
 function placeholderPhoto(
