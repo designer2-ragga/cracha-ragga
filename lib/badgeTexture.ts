@@ -486,11 +486,12 @@ export function drawFront(
 
   // lockup vertical (ragga + nome da vertical), no topo
   const lock = loadImage("/badge/lockups/" + v.key + ".svg", onReady);
-  // Lockups horizontais: a caixa limita mais a altura que a largura, para
-  // que a altura do wordmark fique parecida entre verticais de aspecto
-  // diferente (Restaurantes é bem mais largo que Grupo).
+  // Todos os lockups saem com a MESMA altura (76), não com a mesma largura:
+  // os aspectos vão de 5,1:1 (Grupo) a 8,3:1 (Restaurantes), e limitar pela
+  // largura faria o wordmark de Restaurantes nascer menor que o dos outros.
+  // A largura máxima só existe como trava de segurança.
   if (lock)
-    drawContained(ctx, tinted(lock, INK), TEX_W / 2, SLOT_SAFE + 70, 560, 86);
+    drawContained(ctx, tinted(lock, INK), TEX_W / 2, SLOT_SAFE + 66, 644, 76);
 
   if (s.version === "enxuta") {
     photo(ctx, s, TEX_W / 2, 515, 172, onReady);
