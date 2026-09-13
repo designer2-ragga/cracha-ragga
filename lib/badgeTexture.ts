@@ -142,16 +142,24 @@ let INK = "#ffffff";
 /** Cache de imagens recoloridas na tinta da face. */
 const tintCache = new Map<string, HTMLCanvasElement>();
 
+/**
+ * Supersampling do recolorido. Os lockups da marca trazem width/height
+ * pequenos (ex.: 453x85), e rasterizar no tamanho nativo para depois ampliar
+ * borra o nome da vertical. Como o `drawImage` de um SVG re-rasteriza o vetor
+ * no tamanho de destino, pedir 3x já sai nítido.
+ */
+const TINT_SS = 3;
+
 /** Recolore um SVG branco para a tinta atual, preservando o alfa. */
 function tinted(img: HTMLImageElement, color: string) {
   const key = img.src + "|" + color;
   const hit = tintCache.get(key);
   if (hit) return hit;
   const c = document.createElement("canvas");
-  c.width = Math.max(1, img.naturalWidth);
-  c.height = Math.max(1, img.naturalHeight);
+  c.width = Math.max(1, Math.round(img.naturalWidth * TINT_SS));
+  c.height = Math.max(1, Math.round(img.naturalHeight * TINT_SS));
   const cx = c.getContext("2d")!;
-  cx.drawImage(img, 0, 0);
+  cx.drawImage(img, 0, 0, c.width, c.height);
   cx.globalCompositeOperation = "source-in";
   cx.fillStyle = color;
   cx.fillRect(0, 0, c.width, c.height);
@@ -486,12 +494,12 @@ export function drawFront(
 
   // lockup vertical (ragga + nome da vertical), no topo
   const lock = loadImage("/badge/lockups/" + v.key + ".svg", onReady);
-  // Todos os lockups saem com a MESMA altura (76), não com a mesma largura:
+  // Todos os lockups saem com a MESMA altura (84), não com a mesma largura:
   // os aspectos vão de 5,1:1 (Grupo) a 8,3:1 (Restaurantes), e limitar pela
   // largura faria o wordmark de Restaurantes nascer menor que o dos outros.
   // A largura máxima só existe como trava de segurança.
   if (lock)
-    drawContained(ctx, tinted(lock, INK), TEX_W / 2, SLOT_SAFE + 66, 644, 76);
+    drawContained(ctx, tinted(lock, INK), TEX_W / 2, SLOT_SAFE + 70, 690, 84);
 
   if (s.version === "enxuta") {
     photo(ctx, s, TEX_W / 2, 515, 172, onReady);

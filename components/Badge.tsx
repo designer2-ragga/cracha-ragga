@@ -11,6 +11,9 @@ export const CARD_W = 1.6;
 export const CARD_H = (CARD_W * TEX_H) / TEX_W; // CR80 vertical, 54 × 86 mm
 export const CARD_T = 0.0125; // 75% thinner
 
+/** Supersampling da textura do cartão na prévia 3D. */
+const TEX_SCALE = 2;
+
 /** Draws periodic vertical soft bands (rotated into diagonals by the texture)
  *  for the glossy "light streak" reflection. `blur` softens the band edges. */
 function drawStreaks(
@@ -124,8 +127,13 @@ export default function Badge() {
   const faces = useMemo(() => {
     const make = () => {
       const c = document.createElement("canvas");
-      c.width = TEX_W;
-      c.height = TEX_H;
+      // O cartão ocupa ~1/5 da largura do canvas no enquadramento padrão, o
+      // que reduz a textura em ~4×. Nessa redução o traço fino do nome da
+      // vertical dentro do lockup some no mipmap e o logo parece sumido.
+      // Desenhar em TEX_SCALE× resolve sem mexer em nenhuma coordenada: o
+      // código de desenho continua no espaço de 768.
+      c.width = TEX_W * TEX_SCALE;
+      c.height = TEX_H * TEX_SCALE;
       const context = c.getContext("2d")!;
       const tex = new THREE.CanvasTexture(c);
       tex.anisotropy = 16;
@@ -176,6 +184,8 @@ export default function Badge() {
   useEffect(() => {
     const render = () => {
       const state = useBadgeStore.getState();
+      faces.front.ctx.setTransform(TEX_SCALE, 0, 0, TEX_SCALE, 0, 0);
+      faces.back.ctx.setTransform(TEX_SCALE, 0, 0, TEX_SCALE, 0, 0);
       drawFront(faces.front.ctx, state, render);
       drawBack(faces.back.ctx, state, render);
       faces.front.tex.needsUpdate = true;
