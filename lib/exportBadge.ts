@@ -1,57 +1,112 @@
 import { jsPDF } from "jspdf";
 import type { BadgeState } from "@/store/useBadgeStore";
-import { drawBadge, TEX_W, TEX_H } from "./badgeTexture";
+import { drawFront, drawBack, TEX_W, TEX_H } from "./badgeTexture";
+import { getVertical } from "./verticals";
+
+// Cartão CR80 na vertical + sangria. Premissa declarada no briefing até a
+// gráfica confirmar: 54 × 86 mm de corte, 3 mm de sangria em volta.
+const TRIM_W = 54;
+const TRIM_H = 86;
+const BLEED = 3;
+
+const PAGE_W = TRIM_W + BLEED * 2;
+const PAGE_H = TRIM_H + BLEED * 2;
+
+/** Resolução do raster: ~4× a textura, acima de 1200 dpi no tamanho de corte. */
+const SCALE = 4;
+
+type Face = (
+  ctx: CanvasRenderingContext2D,
+  s: BadgeState,
+  onReady: () => void,
+  opts: { bleed?: boolean }
+) => void;
 
 /**
- * Renders the badge ARTWORK to a high-resolution, full-bleed (square corners)
- * canvas and saves it as a print-ready PDF with corner crop marks.
+ * Rasteriza uma face em full-bleed. A arte é desenhada maior que o corte e
+ * centralizada, para que a sangria seja extensão real do desenho e não uma
+ * tarja chapada na borda.
  */
-export function downloadBadgePdf(state: BadgeState) {
-  const scale = 4; // ~1100+ DPI at the trim size below
+function renderFace(face: Face, state: BadgeState): string {
   const canvas = document.createElement("canvas");
-  canvas.width = TEX_W * scale;
-  canvas.height = TEX_H * scale;
+  canvas.width = Math.round(TEX_W * SCALE * (PAGE_W / TRIM_W));
+  canvas.height = Math.round(TEX_H * SCALE * (PAGE_H / TRIM_H));
   const ctx = canvas.getContext("2d")!;
-  ctx.scale(scale, scale);
-  // bleed: no rounded corners, full rectangle for print
-  drawBadge(ctx, { ...state, stainAlpha: 1 }, () => {}, { bleed: true });
 
-  const img = canvas.toDataURL("image/png");
+  // escala de bleed: a arte cresce o suficiente para cobrir a sangria
+  const over = Math.max(PAGE_W / TRIM_W, PAGE_H / TRIM_H);
+  ctx.scale(SCALE * over, SCALE * over);
+  ctx.translate(
+    (canvas.width / (SCALE * over) - TEX_W) / 2,
+    (canvas.height / (SCALE * over) - TEX_H) / 2
+  );
 
-  // Trim size (the card) + a margin that holds the crop marks.
-  const trimW = 70;
-  const trimH = trimW * (TEX_H / TEX_W);
-  const margin = 6;
-  const pageW = trimW + margin * 2;
-  const pageH = trimH + margin * 2;
+  face(ctx, state, () => {}, { bleed: true });
+  return canvas.toDataURL("image/png");
+}
 
+/** Marcas de corte nos quatro cantos, fora da área de sangria. */
+function cropMarks(pdf: jsPDF) {
+  pdf.setDrawColor(0);
+  pdf.setLineWidth(0.12);
+  const len = 2.4;
+  const L = BLEED;
+  const R = BLEED + TRIM_W;
+  const T = BLEED;
+  const B = BLEED + TRIM_H;
+
+  const corner = (x: number, y: number, sx: number, sy: number) => {
+    pdf.line(x + sx * BLEED, y, x + sx * (BLEED - len), y);
+    pdf.line(x, y + sy * BLEED, x, y + sy * (BLEED - len));
+  };
+  corner(L, T, -1, -1);
+  corner(R, T, 1, -1);
+  corner(L, B, -1, 1);
+  corner(R, B, 1, 1);
+}
+
+/**
+ * PDF pronto para a gráfica. A versão institucional sai com duas páginas
+ * (frente e verso); a enxuta também sai com duas, porque o cartão é impresso
+ * dos dois lados — o verso dela é só o lockup do grupo.
+ */
+export function buildBadgePdf(state: BadgeState): jsPDF {
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: [pageW, pageH],
+    format: [PAGE_W, PAGE_H],
+    compress: true,
   });
-  pdf.addImage(img, "PNG", margin, margin, trimW, trimH, undefined, "FAST");
 
-  // ---- crop marks (4 corners, outside the trim) ----
-  pdf.setDrawColor(0);
-  pdf.setLineWidth(0.12);
-  const len = 4; // mark length (mm)
-  const gap = 1.2; // gap from trim edge (mm)
-  const L = margin; // left trim x
-  const R = margin + trimW; // right trim x
-  const T = margin; // top trim y
-  const B = margin + trimH; // bottom trim y
+  const pages: Array<[string, Face]> = [
+    ["frente", drawFront],
+    ["verso", drawBack],
+  ];
 
-  const corner = (x: number, y: number, sx: number, sy: number) => {
-    // horizontal arm
-    pdf.line(x + sx * gap, y, x + sx * (gap + len), y);
-    // vertical arm
-    pdf.line(x, y + sy * gap, x, y + sy * (gap + len));
-  };
-  corner(L, T, -1, -1); // top-left
-  corner(R, T, 1, -1); // top-right
-  corner(L, B, -1, 1); // bottom-left
-  corner(R, B, 1, 1); // bottom-right
+  pages.forEach(([, face], i) => {
+    if (i > 0) pdf.addPage([PAGE_W, PAGE_H], "portrait");
+    const img = renderFace(face, state);
+    pdf.addImage(img, "PNG", 0, 0, PAGE_W, PAGE_H, undefined, "FAST");
+    cropMarks(pdf);
+  });
 
-  pdf.save("cracha-ragga.pdf");
+  return pdf;
+}
+
+/** Nome do arquivo: vertical + versao + pessoa. */
+export function badgeFileName(state: BadgeState): string {
+  const v = getVertical(state.vertical);
+  // NFD separa o acento do glifo; o filtro abaixo descarta tudo que não for
+  // [a-z0-9], acentos combinantes inclusive — não precisa de faixa unicode.
+  const slug = (state.fullName || "cracha")
+    .normalize("NFD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return `cracha-${v.key}-${state.version}-${slug}.pdf`;
+}
+
+export function downloadBadgePdf(state: BadgeState) {
+  buildBadgePdf(state).save(badgeFileName(state));
 }

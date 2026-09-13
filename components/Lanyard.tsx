@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { useFrame, useThree, extend } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import {
   BallCollider,
   CuboidCollider,
@@ -11,28 +11,48 @@ import {
   useSphericalJoint,
   type RapierRigidBody,
 } from "@react-three/rapier";
-import { MeshLineGeometry, MeshLineMaterial } from "meshline";
 import Badge, { CARD_H } from "./Badge";
 import { useBadgeStore } from "@/store/useBadgeStore";
-import FoodLayer from "./Food";
+import { inkFor } from "@/lib/verticals";
+import { RibbonGeometry } from "@/lib/ribbon";
 
-extend({ MeshLineGeometry, MeshLineMaterial });
 
-const ANCHOR_Y = 2.6;
+/**
+ * Largura real da fita em unidades de mundo. Medido na foto do cordão do
+ * Rapha: a fita dá 51% da largura do cartão (cartão 335 px, fita 175 px),
+ * ou seja ~28 mm de fita para 54 mm de cartão.
+ */
+const STRAP_W = 0.51 * 1.6;
+
+
+/**
+ * Folga entre a ponta da fita e o topo do cartão: é onde mora a ferragem
+ * (crimpe + argola + presilha). Sem ela a fita passa por cima do metal.
+ */
+const HARDWARE_GAP = 0.95;
+
+/**
+ * Comprimento de um bloco da fita em múltiplos da largura dela. É o que
+ * mantém o logo com a proporção certa: o ladrilho é recortado com esse mesmo
+ * aspecto e o `repeat` é calculado a partir do comprimento real da corda.
+ */
+const TILE_ASPECT = 2.9;
+
+/** Comprimento de um ladrilho da textura, em unidades de mundo. */
+const TILE_PITCH = STRAP_W * TILE_ASPECT;
 const IDENTITY_QUAT = new THREE.Quaternion();
 
 export default function Lanyard() {
   const physics = useBadgeStore((s) => s.physics);
   const lanyardColor = useBadgeStore((s) => s.lanyardColor);
-  const vertical = useBadgeStore((s) => s.vertical);
 
   // Strap texture: the selected vertical's logo tiled along the lanyard.
   const strip = useMemo(() => {
     const c = document.createElement("canvas");
-    // tile aspect matches the visible strap (≈1.65 long : 1.2 wide) so the
-    // horizontal logo is not stretched when mapped onto the band.
-    c.width = 352;
+    // O ladrilho tem o MESMO aspecto que vai ocupar na fita (TILE_ASPECT : 1),
+    // então o logo sai sem esticar independente do comprimento da corda.
     c.height = 256;
+    c.width = Math.round(256 * TILE_ASPECT);
     const ctx = c.getContext("2d")!;
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = THREE.RepeatWrapping;
@@ -42,7 +62,9 @@ export default function Lanyard() {
     return { ctx, tex };
   }, []);
 
-  // Strap = the vertical's official horizontal logo (white) tiled along it.
+  // Cordão = símbolo + "ragga" repetido, como na fita real (a fita não
+  // leva a palavra "GRUPO" — conferido na foto do cordão do Rapha).
+  // Só a cor muda entre as versões (v1 roxo padrão, v2 cor da vertical).
   useEffect(() => {
     const ctx = strip.ctx;
     const W = ctx.canvas.width;
@@ -52,34 +74,40 @@ export default function Lanyard() {
       ctx.fillStyle = lanyardColor;
       ctx.fillRect(0, 0, W, H);
       if (img && img.complete && img.naturalWidth) {
-        const tw = W * 0.86;
+        // largura pela proporção natural do lockup, nunca esticado
+        const tw = W * 0.69; // 2 larguras de fita, como na foto
         const th = tw * (img.naturalHeight / img.naturalWidth);
-        // recolour the brand logo to white for the coloured strap
+        // a fita clara (v2 de Franquia e Insumos) pede logo escuro
+        const tinta = inkFor(lanyardColor);
         const t = document.createElement("canvas");
         t.width = Math.ceil(tw);
         t.height = Math.max(1, Math.ceil(th));
         const tc = t.getContext("2d")!;
         tc.drawImage(img, 0, 0, tw, th);
         tc.globalCompositeOperation = "source-in";
-        tc.fillStyle = "#ffffff";
+        tc.fillStyle = tinta;
         tc.fillRect(0, 0, t.width, t.height);
+        // O U da fita corre do cartão para cima; sem o giro de 180° o
+        // lockup sai de cabeça para baixo no lado visível da fita.
+        ctx.save();
+        ctx.translate(W / 2, H / 2);
+        ctx.rotate(Math.PI);
         ctx.globalAlpha = 0.95;
-        ctx.drawImage(t, (W - tw) / 2, (H - th) / 2);
+        ctx.drawImage(t, -tw / 2, -th / 2);
         ctx.globalAlpha = 1;
+        ctx.restore();
       }
       strip.tex.needsUpdate = true;
     };
     const img = new Image();
     img.onload = () => draw(img);
-    img.src = `/badge/logos/${vertical}.svg`;
+    img.src = "/badge/lockups/ragga-cordao.svg";
     if (img.complete) draw(img);
     else draw();
-  }, [vertical, lanyardColor, strip]);
+  }, [lanyardColor, strip]);
 
   useEffect(() => () => strip.tex.dispose(), [strip]);
 
-  // One undistorted logo along the strap (tile aspect already matches).
-  const repeatX = 1;
 
   const fixed = useRef<RapierRigidBody>(null!);
   const j1 = useRef<RapierRigidBody>(null!);
@@ -88,14 +116,23 @@ export default function Lanyard() {
   const card = useRef<RapierRigidBody>(null!);
 
   const band = useRef<THREE.Mesh>(null);
-  const { size, camera } = useThree();
+  const ribbon = useMemo(() => new RibbonGeometry(48), []);
+  useEffect(() => () => ribbon.dispose(), [ribbon]);
+  const { camera } = useThree();
 
   const [dragged, setDragged] = useState<THREE.Vector3 | false>(false);
   const [hovered, setHovered] = useState(false);
   const [recentering, setRecentering] = useState(false);
 
-  const seg = 0.55 * physics.ropeLength;
-  const restY = ANCHOR_Y - seg * 3 - CARD_H / 2 - 0.25;
+  // Fita mais comprida: com 0,55 por segmento cabia um único lockup na
+  // parte visível. A foto do cordão mostra a marca repetida várias vezes.
+  const seg = 0.62 * physics.ropeLength;
+
+  // O cartão descansa sempre no centro da cena (y = 0) e a âncora da corda é
+  // derivada daí — assim o cordão sai por cima do quadro em vez de empurrar o
+  // cartão para baixo quando a corda muda de comprimento.
+  const restY = 0;
+  const anchorY = seg * 3 + CARD_H / 2 + HARDWARE_GAP;
 
   // Smooth re-center animation driven by the store's recenterNonce.
   const recenterNonce = useBadgeStore((s) => s.recenterNonce);
@@ -120,7 +157,10 @@ export default function Lanyard() {
   useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], seg]);
   useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], seg]);
   useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], seg]);
-  useSphericalJoint(j3, card, [[0, 0, 0], [0, CARD_H / 2 + 0.25, 0]]);
+  useSphericalJoint(j3, card, [
+    [0, 0, 0],
+    [0, CARD_H / 2 + HARDWARE_GAP, 0],
+  ]);
 
   // reusable temporaries
   const [curve] = useState(
@@ -242,10 +282,9 @@ export default function Lanyard() {
       curve.points[2].copy(j1l);
       curve.points[3].copy(fixed.current.translation() as THREE.Vector3);
 
-      if (band.current) {
-        // @ts-expect-error meshline geometry method
-        band.current.geometry.setPoints(curve.getPoints(32));
-      }
+      // A repetição da arte vai nos UVs, por comprimento de arco: assim o
+      // lockup mantém a proporção qualquer que seja o comprimento da corda.
+      ribbon.update(curve.getPoints(ribbon.segments), STRAP_W, TILE_PITCH);
 
       // Idle motion: the only movement is the card turning a little around its
       // own vertical axis (yaw). Pitch (x) and swing/roll (z) are damped out so
@@ -274,7 +313,7 @@ export default function Lanyard() {
 
   return (
     <>
-      <group position={[0, ANCHOR_Y, 0]}>
+      <group position={[0, anchorY, 0]}>
         <RigidBody ref={fixed} type="fixed" colliders={false} />
         <RigidBody
           ref={j1}
@@ -310,7 +349,7 @@ export default function Lanyard() {
         <RigidBody
           ref={card}
           type={dragged || recentering ? "kinematicPosition" : "dynamic"}
-          position={[0, -seg * 3 - CARD_H / 2 - 0.25, 0]}
+          position={[0, -seg * 3 - CARD_H / 2 - HARDWARE_GAP, 0]}
           colliders={false}
           linearDamping={physics.damping}
           angularDamping={physics.damping}
@@ -338,20 +377,15 @@ export default function Lanyard() {
         </RigidBody>
       </group>
 
-      {/* Food thrown by the dice button. */}
-      <FoodLayer cardRef={card} />
-
       {/* The lanyard rendered as a WIDE flat strap with logos tiled along it. */}
-      <mesh ref={band}>
-        <meshLineGeometry />
-        <meshLineMaterial
-          color="white"
+      {/* fita como objeto 3D: tem frente e verso de verdade */}
+      <mesh ref={band} castShadow>
+        <primitive object={ribbon} attach="geometry" />
+        <meshStandardMaterial
           map={strip.tex}
-          useMap={1}
-          repeat={[repeatX, 1]}
-          depthTest={false}
-          resolution={[size.width, size.height]}
-          lineWidth={1.2}
+          side={THREE.DoubleSide}
+          roughness={0.82}
+          metalness={0}
         />
       </mesh>
     </>

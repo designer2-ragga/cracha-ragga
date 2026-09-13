@@ -1,27 +1,12 @@
 import { create } from "zustand";
-import { getVertical } from "@/lib/verticals";
+import { getVertical, corDoCordao, CORDAO_PADRAO } from "@/lib/verticals";
+import type { VersionKey } from "@/lib/verticals";
 
-export type BgPattern = "none" | "lines" | "dots" | "grid" | "noise" | "diagonal";
+export const ZOOM_MIN = 0.55;
+export const ZOOM_MAX = 2.6;
 
-// "fries" is the dice option; it spawns several independent "fry" sticks.
-export type FoodType = "hotdog" | "ketchup" | "mustard" | "fries" | "fry";
-
-export interface FoodThrow {
-  id: number;
-  type: FoodType;
-}
-
-/** A sauce splat painted onto the badge face, in canvas (texture) coords. */
-export interface Stain {
-  x: number;
-  y: number;
-  r: number;
-  color: string;
-  seed: number;
-}
-
-const FOOD_TYPES: FoodType[] = ["hotdog", "ketchup", "mustard", "fries"];
-let foodCounter = 0;
+export type BgPattern =
+  "none" | "lines" | "dots" | "grid" | "noise" | "diagonal";
 
 export interface PhotoConfig {
   src: string | null;
@@ -61,8 +46,17 @@ export interface MaterialConfig {
 }
 
 export interface BadgeState {
-  // Selected Grupo Ragga vertical (drives lanyard color + logo)
+  // v1 institucional (frente + verso) ou v2 enxuta (só frente)
+  version: VersionKey;
+
+  // Vertical do Grupo Ragga — define cor do cartão, lockup e conteúdo
   vertical: string;
+
+  // true = cartão virado, mostrando o verso
+  flipped: boolean;
+
+  // aproximação da câmera na prévia; 1 = enquadramento padrão
+  zoom: number;
 
   // Basic info
   fullName: string;
@@ -91,34 +85,27 @@ export interface BadgeState {
   // Reflection / finish of the badge face
   material: MaterialConfig;
 
-  // Food fun
-  foodThrows: FoodThrow[];
-  stains: Stain[];
-
   // texture revision — bump to force CanvasTexture regeneration
   rev: number;
 
   set: <K extends keyof BadgeState>(key: K, value: BadgeState[K]) => void;
+  setVersion: (v: VersionKey) => void;
+  toggleFlip: () => void;
+  setZoom: (z: number) => void;
+  nudgeZoom: (fator: number) => void;
   setVertical: (key: string) => void;
   setPhoto: (p: Partial<PhotoConfig>) => void;
   setLogo: (l: Partial<LogoConfig>) => void;
   setPhysics: (p: Partial<PhysicsConfig>) => void;
   setMaterial: (m: Partial<MaterialConfig>) => void;
   shuffle: () => void;
-  throwFood: () => void;
-  removeFood: (id: number) => void;
-  addStain: (s: Stain) => void;
   recenter: () => void;
-  setStainAlpha: (a: number) => void;
-  clearStains: () => void;
   reset: () => void;
 
   // bump to remount the physics world (full reset)
   resetNonce: number;
   // bump to trigger a smooth re-center animation
   recenterNonce: number;
-  // global multiplier for stain opacity (used for the fade-out on recenter)
-  stainAlpha: number;
 }
 
 const initialPhoto: PhotoConfig = {
@@ -158,29 +145,29 @@ const initialMaterial: MaterialConfig = {
 };
 
 const initialState = {
-  vertical: "mkt-vendas",
-  fullName: "Ana Ragga",
-  role: "Diretora Criativa",
+  version: "institucional" as VersionKey,
+  vertical: "grupo",
+  flipped: false,
+  zoom: 1,
+  fullName: "Nome Sobrenome",
+  role: "Cargo",
   department: "Grupo Ragga",
   subtitle: "Identidade & Design",
   footerLeft: "ID 0042",
   footerRight: "grupo-ragga.com",
   photo: initialPhoto,
   logo: initialLogo,
-  badgeColor: "#E86820",
+  badgeColor: "#2D1B4E",
   textColor: "#ffffff",
   borderColor: "#ffffff",
-  lanyardColor: "#E86820",
+  lanyardColor: CORDAO_PADRAO,
   bgPattern: "dots" as BgPattern,
   patternDensity: 24,
   patternOpacity: 0.12,
   physics: initialPhysics,
   material: initialMaterial,
-  foodThrows: [],
-  stains: [],
   resetNonce: 0,
   recenterNonce: 0,
-  stainAlpha: 1,
   rev: 0,
 };
 
@@ -190,12 +177,29 @@ export const useBadgeStore = create<BadgeState>((set) => ({
   set: (key, value) =>
     set((s) => ({ [key]: value, rev: s.rev + 1 }) as Partial<BadgeState>),
 
-  // Selecting a vertical adopts its brand key-color for BOTH the lanyard
-  // strap and the badge card.
+  toggleFlip: () => set((s) => ({ flipped: !s.flipped })),
+
+  setZoom: (z) => set({ zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z)) }),
+
+  nudgeZoom: (fator) =>
+    set((s) => ({
+      zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s.zoom * fator)),
+    })),
+
+  // Trocar de versão só muda o cordão: na v1 ele é o roxo padrão único
+  // (regra do Rapha), na v2 ele acompanha a vertical (proposta nossa).
+  setVersion: (version) =>
+    set((s) => ({
+      version,
+      lanyardColor: corDoCordao(version, s.vertical),
+      rev: s.rev + 1,
+    })),
+
+  // A vertical define a cor do cartão e, na v2, também a do cordão.
   setVertical: (key) =>
     set((s) => ({
       vertical: key,
-      lanyardColor: getVertical(key).color,
+      lanyardColor: corDoCordao(s.version, key),
       badgeColor: getVertical(key).color,
       rev: s.rev + 1,
     })),
@@ -203,60 +207,23 @@ export const useBadgeStore = create<BadgeState>((set) => ({
   setPhoto: (p) =>
     set((s) => ({ photo: { ...s.photo, ...p }, rev: s.rev + 1 })),
 
-  setLogo: (l) =>
-    set((s) => ({ logo: { ...s.logo, ...l }, rev: s.rev + 1 })),
+  setLogo: (l) => set((s) => ({ logo: { ...s.logo, ...l }, rev: s.rev + 1 })),
 
-  setPhysics: (p) =>
-    set((s) => ({ physics: { ...s.physics, ...p } })),
+  setPhysics: (p) => set((s) => ({ physics: { ...s.physics, ...p } })),
 
-  setMaterial: (m) =>
-    set((s) => ({ material: { ...s.material, ...m } })),
+  setMaterial: (m) => set((s) => ({ material: { ...s.material, ...m } })),
 
   shuffle: () =>
     set((s) => ({
       physics: { ...s.physics, shuffleNonce: s.physics.shuffleNonce + 1 },
     })),
 
-  // Roll the dice: throw one random food at the badge. "fries" scatters
-  // 8 independent fry sticks; everything else is a single item.
-  throwFood: () =>
-    set((s) => {
-      const pick = FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
-      const additions: FoodThrow[] =
-        pick === "fries"
-          ? Array.from({ length: 8 }, () => ({
-              id: ++foodCounter,
-              type: "fry" as FoodType,
-            }))
-          : [{ id: ++foodCounter, type: pick }];
-      const next = [...s.foodThrows, ...additions];
-      // keep a generous cap (a fries roll alone is 8 bodies)
-      return { foodThrows: next.slice(-26) };
-    }),
-
-  removeFood: (id) =>
-    set((s) => ({ foodThrows: s.foodThrows.filter((f) => f.id !== id) })),
-
-  addStain: (stain) =>
-    set((s) => ({ stains: [...s.stains, stain].slice(-40), rev: s.rev + 1 })),
-
-  // Re-center the badge (smooth, handled in the 3D scene) and clear food.
-  // Stains fade out separately via the fade animation.
-  recenter: () =>
-    set((s) => ({
-      foodThrows: [],
-      recenterNonce: s.recenterNonce + 1,
-    })),
-
-  setStainAlpha: (a) => set((s) => ({ stainAlpha: a, rev: s.rev + 1 })),
-
-  clearStains: () => set((s) => ({ stains: [], stainAlpha: 1, rev: s.rev + 1 })),
+  // Recentraliza o crachá (animação suave, tratada na cena 3D).
+  recenter: () => set((s) => ({ recenterNonce: s.recenterNonce + 1 })),
 
   reset: () =>
     set((s) => ({
       ...initialState,
-      foodThrows: [],
-      stains: [],
       resetNonce: s.resetNonce + 1,
       rev: Date.now(),
     })),
