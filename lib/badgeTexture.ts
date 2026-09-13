@@ -197,8 +197,10 @@ function watermark(
   const img = loadImage("/badge/icones/" + verticalKey + ".svg", onReady);
   if (!img) return;
   ctx.save();
-  // o clip do cartão já corta o que passa da borda
-  ctx.globalAlpha = INK === "#ffffff" ? 0.07 : 0.11;
+  // o clip do cartão já corta o que passa da borda.
+  // A 5% só os símbolos densos (Grupo, Restaurantes) apareciam; os de traço
+  // fino — folha, trigo, pimenta — sumiam na cor da vertical.
+  ctx.globalAlpha = INK === "#ffffff" ? 0.16 : 0.18;
   ctx.translate(TEX_W * 1.04, TEX_H * 0.46);
   ctx.rotate(0.14);
   drawContained(ctx, tinted(img, INK), 0, 0, 700, 860);
